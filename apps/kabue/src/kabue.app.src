@@ -5,7 +5,14 @@
   {mod, {kabue_app, []}},
   {applications,
    [kernel,
-    stdlib
+    stdlib,
+    klsn,
+    cowboy,
+    inets,
+    jsone,
+    gpte,
+    os_mon,
+    observer_cli
    ]},
   {env,[]},
   {modules, []},

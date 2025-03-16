@@ -3,7 +3,7 @@
 %% @end
 %%%-------------------------------------------------------------------
 
--module(kabue_sup).
+-module(kabue_rakuten_sup).
 
 -behaviour(supervisor).
 
@@ -26,10 +26,17 @@ start_link() ->
 %%                  type => worker(),       % optional
 %%                  modules => modules()}   % optional
 init([]) ->
-    SupFlags = #{strategy => one_for_all,
-                 intensity => 0,
+    ChildSpecs = [
+        #{
+            id => kabue_rakuten_rss_market_1
+          , start => {kabue_rakuten_rss_market, start_link, []}
+          , restart => permanent
+          , type => worker
+        }
+    ],
+    SupFlags = #{strategy => one_for_one,
+                 intensity => length(ChildSpecs) + 1,
                  period => 1},
-    ChildSpecs = [],
     {ok, {SupFlags, ChildSpecs}}.
 
 %% internal functions
