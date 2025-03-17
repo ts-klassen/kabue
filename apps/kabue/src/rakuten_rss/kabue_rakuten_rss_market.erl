@@ -34,10 +34,6 @@
           % <<"A1">> => <<"diff">>
         }
       , last_updated_at => klsn:maybe(non_neg_integer())
-      , journal := #{
-            db := klsn:binstr()
-          , id := klsn:binstr()
-        }
     }.
 
 
@@ -46,16 +42,11 @@ start_link() ->
 
 init(_Settings) ->
     process_flag(trap_exit, true),
-    {ok, Db} = application:get_env(kabue, kabue_rakuten_rss_market_db),
     State = #{
             tickers => #{}
           , available_rows => lists:seq(2, 501)
           , sheet => #{<<"current_etag">> => <<"none">>, <<"data">> => #{}}
           , update_sheet => #{}
-          , journal => #{
-                db => Db
-              , id => klsn_db:time_now()
-            }
         },
     {ok, State}.
 
@@ -74,6 +65,11 @@ handle_call({webhook, Body}, _From, State0) ->
                     klsn_map:get([sheet, <<"data">>], State0)
                   , klsn_map:get([<<"data">>], Hook)
                 ),
+            write(#{
+                measurement => rakuten_rss_market_raw_excel
+              , tag => #{ version => 1 }
+              , field => Data
+            }),
             {<<"diff">>, Hook#{<<"data">> => Data}}
     end,
     UpdateSheet = klsn_map:get([update_sheet], State0),
@@ -83,27 +79,6 @@ handle_call({webhook, Body}, _From, State0) ->
           , sheet => Sheet
           , last_updated_at => LastUpdatedAt
         },
-    case
-        {
-            klsn_map:lookup([journal, db], State)
-          , maps:size(maps:get(<<"data">>, Hook))
-        } 
-    of {{value, _}, Size} when Size > 0 ->
-        spawn(fun()->
-            Db = klsn_map:get([journal, db], State),
-            Id = klsn_map:get([journal, id], State),
-            ThisJournal = #{
-                last_updated_at => LastUpdatedAt
-              , hook => Hook
-            },
-            klsn_db:upsert(Db, Id, fun
-                ({value, Doc=#{<<"journal">>:=Journal}}) ->
-                    Doc#{<<"journal">> := [ThisJournal|Journal]};
-                (none) ->
-                    #{<<"journal">> => [ThisJournal]}
-            end)
-        end); _ -> ok
-    end,
     {reply, jsone:encode(UpdateSheet#{<<"A1">> => A1}), State};
 handle_call({lookup_by_ticker, Ticker}, _From, State) ->
     {reply, market_info(Ticker, State), State};
@@ -120,9 +95,10 @@ handle_cast({add_ticker, Ticker}, State0) ->
             State0;
         none ->
             [Row|Rows] = maps:get(available_rows, State0),
-            klsn_map:upsert([tickers, Ticker], Row, State0#{
+            State10 = klsn_map:upsert([tickers, Ticker], Row, State0#{
                 available_rows => Rows
-            })
+            }),
+            klsn_map:upsert([update_sheet, cell(1, Row)], Ticker, State10)
     end,
     {noreply, State};
 handle_cast({remove_ticker, Ticker}, State0) ->
@@ -210,7 +186,14 @@ cell(Column, Row) ->
     iolist_to_binary([ColumnName, integer_to_binary(Row)]).
 
 
-
+-spec write(klsn_flux:point() | [klsn_flux:point()]) -> ok.
+write(Point) ->
+    spawn(fun() ->
+        {ok, Org} = application:get_env(kabue, influxdb_organization),
+        {ok, Bucket} = application:get_env(kabue, influxdb_bucket),
+        klsn_flux:write(Org, Bucket, Point)
+    end),
+    ok.
 
 
 
