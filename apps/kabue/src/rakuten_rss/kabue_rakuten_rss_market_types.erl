@@ -9,6 +9,8 @@
     ]).
 
 -type market_info() :: #{
+    % 引数として指定した ticker
+    ticker := klsn:binstr(),
     % 1 銘柄コード
     ticker_code := klsn:binstr(),
     % 2 市場コード
@@ -308,6 +310,8 @@
 }.
 
 market_info_keys() -> [
+    % 引数として指定した ticker
+    ticker,
     % 1 銘柄コード
     ticker_code,
     % 2 市場コード
