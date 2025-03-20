@@ -14,6 +14,9 @@
       , last_updated_rows/0
       , available_count/0
       , cell/1
+      , read/1
+      , read/2
+      , read/3
     ]).
 
 -export_type([
@@ -58,7 +61,6 @@ init(_Settings) ->
             tickers => #{}
           , available_rows => lists:seq(2, 501)
           , sheet => #{<<"current_etag">> => <<"none">>, <<"data">> => #{}}
-          , update_sheet => #{}
           , last_updated_cells => []
           , on_update => [ fun write_updated_market_info/1 ]
           , update_sheet => maps:from_list(lists:map(fun(I) ->
@@ -116,7 +118,7 @@ handle_call(last_updated_rows, _From, State) ->
         Row = cell_name_to_row_number(Cell),
         sets:add_element(Row, Acc)
     end, sets:new([{version,2}]), klsn_map:get([last_updated_cells, <<"data">>], State)))),
-    {reply, klsn_map:get([last_updated_rows], State), State};
+    {reply, UpdatedRows, State};
 handle_call(available_count, _From, State) ->
     {reply, length(klsn_map:get([available_rows], State, [])), State};
 handle_call(debug_dump_state, _From, State) ->
@@ -193,8 +195,6 @@ last_updated_rows() ->
 -spec available_count() -> klsn:maybe(non_neg_integer()).
 available_count() ->
     gen_server:call(?MODULE, available_count).
-
-%% private functions %%
 
 -spec market_info(
         ticker() | row_number(), state()
@@ -343,7 +343,32 @@ write(Point) ->
     ok.
 
 
+-spec read(ticker()) -> #{}.
+read(Ticker) ->
+    read(Ticker, {unary, <<"-">>, {duration, [{7, d}]}}).
 
+-spec read(ticker(), klsn_flux:value()) -> #{}.
+read(Ticker, Start) ->
+    read(Ticker, Start, {call, now}).
+
+-spec read(ticker(), klsn_flux:value(), klsn_flux:value()) -> #{}.
+read(Ticker, Start, Stop) ->
+    {ok, Org} = application:get_env(kabue, influxdb_organization),
+    {ok, Bucket} = application:get_env(kabue, influxdb_bucket),
+    Query = <<"
+    from(bucket: args.bucket)
+    |> range(start: args.timeRangeStart, stop: args.timeRangeStop)
+    |> filter(fn: (r) => r[\"_measurement\"] == args.measurement)
+    |> filter(fn: (r) => r[\"ticker\"] == args.ticker)
+    ">>,
+    Args = #{
+        bucket => {string, Bucket}
+      , timeRangeStart => Start
+      , timeRangeStop => Stop
+      , measurement => {string, rakuten_rss_market_info}
+      , ticker => Ticker
+    },
+    klsn_flux:q(Org, Query, Args).
 
 
 

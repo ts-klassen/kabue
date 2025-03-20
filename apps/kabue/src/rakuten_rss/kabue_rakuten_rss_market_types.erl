@@ -309,6 +309,8 @@
     lending_interest_date := klsn:binstr()
 }.
 
+
+-spec market_info_keys() -> [atom()].
 market_info_keys() -> [
     % 引数として指定した ticker
     ticker,
