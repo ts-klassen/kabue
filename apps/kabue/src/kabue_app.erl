@@ -20,6 +20,10 @@ start(_StartType, _StartArgs) ->
             {true, {"/kabue/health", kabue_health_handler, #{}}}
       ; (webhook) ->
             {true, {"/kabue/webhook/:id", kabue_webhook_handler, #{}}}
+      ; (market) ->
+            {true, {"/kabue/market/:market/:ticker", kabue_market_handler, #{}}}
+      ; (static) ->
+            {true, {"/kabue/static/[...]", cowboy_static, {priv_dir, kabue, "static"}}}
       ; (hello_world) ->
             {true, {"/kabue/hello-world", kabue_hello_world_handler, #{}}}
       ; (_) ->
