@@ -62,7 +62,7 @@ init(_Settings) ->
           , available_rows => lists:seq(2, 501)
           , sheet => #{<<"current_etag">> => <<"none">>, <<"data">> => #{}}
           , last_updated_cells => []
-          , on_update => [ fun write_updated_market_info/1 ]
+          , on_update => [ fun write_updated_jpx_market_info/1 ]
           , update_sheet => maps:from_list(lists:map(fun(I) ->
                 {cell(1, I), <<>>}
             end, lists:seq(2, 501)))
@@ -108,7 +108,7 @@ handle_call({webhook, Body}, _From, State0) ->
     end,
     {reply, jsone:encode(UpdateSheet#{<<"A1">> => A1}), State30};
 handle_call({lookup_by_ticker, Ticker}, _From, State) ->
-    {reply, market_info(Ticker, State), State};
+    {reply, jpx_market_info(Ticker, State), State};
 handle_call(last_webhook_at, _From, State) ->
     {reply, klsn_map:lookup([last_webhook_at], State), State};
 handle_call(last_updated_at, _From, State) ->
@@ -168,7 +168,7 @@ terminate(_reason, _State) ->
 webhook(Body) ->
     gen_server:call(?MODULE, {webhook, Body}).
 
--spec lookup(ticker()) -> klsn:maybe(kabue_rakuten_rss_market_types:market_info()).
+-spec lookup(ticker()) -> klsn:maybe(kabue_rakuten_rss_market_types:jpx_market_info()).
 lookup(Ticker) ->
     gen_server:call(?MODULE, {lookup_by_ticker, Ticker}).
 
@@ -196,19 +196,19 @@ last_updated_rows() ->
 available_count() ->
     gen_server:call(?MODULE, available_count).
 
--spec market_info(
+-spec jpx_market_info(
         ticker() | row_number(), state()
-    ) -> klsn:maybe(kabue_rakuten_rss_market_types:market_info()).
-market_info(Ticker, State) when is_binary(Ticker) ->
+    ) -> klsn:maybe(kabue_rakuten_rss_market_types:jpx_market_info()).
+jpx_market_info(Ticker, State) when is_binary(Ticker) ->
     case klsn_map:lookup([tickers, Ticker], State) of
         {value, RowNumber} ->
-            market_info(RowNumber, State);
+            jpx_market_info(RowNumber, State);
         none ->
             none
     end;
-market_info(Row, State) ->
+jpx_market_info(Row, State) ->
     try
-        Keys = kabue_rakuten_rss_market_types:market_info_keys(),
+        Keys = kabue_rakuten_rss_market_types:jpx_market_info_keys(),
         case
             klsn_map:get([sheet, <<"data">>, cell(2, Row)], State, <<>>)
         of
@@ -229,29 +229,29 @@ market_info(Row, State) ->
     end.
 
 
--spec parse_market_info(
+-spec parse_jpx_market_info(
         non_neg_integer()
       , row_number()
       , klsn:binstr() | maps:map(klsn:binstr(), klsn:binstr())
     ) -> {klsn_flux:key(), klsn:binstr()}.
-parse_market_info(Column, Row, Data) ->
-    Keys = kabue_rakuten_rss_market_types:market_info_keys(),
-    parse_market_info(Column, Row, Data, lists:nth(Column, Keys)).
+parse_jpx_market_info(Column, Row, Data) ->
+    Keys = kabue_rakuten_rss_market_types:jpx_market_info_keys(),
+    parse_jpx_market_info(Column, Row, Data, lists:nth(Column, Keys)).
 
 
--spec parse_market_info(
+-spec parse_jpx_market_info(
         non_neg_integer()
       , row_number()
       , klsn:binstr() | maps:map(klsn:binstr(), klsn:binstr())
       , klsn_flux:key()
     ) -> {klsn_flux:key(), klsn:binstr()}.
-parse_market_info(Column, Row, Data, Key) when is_map(Data) ->
-    parse_market_info(
+parse_jpx_market_info(Column, Row, Data, Key) when is_map(Data) ->
+    parse_jpx_market_info(
         Column
       , Row 
       , klsn_map:get(cell(Column, Row), Data)
       , Key);
-parse_market_info(_Column, _Row, Value, Key) ->
+parse_jpx_market_info(_Column, _Row, Value, Key) ->
     {Key, Value}.
 
 
@@ -300,13 +300,13 @@ cell_name_to_column_number(<<A, Rest/binary>>, Acc) when $A =< A, A =< $Z ->
 cell_name_to_column_number(_Rest, Acc) ->
     Acc.
 
--spec write_updated_market_info(state()) -> ok.
-write_updated_market_info(State) ->
+-spec write_updated_jpx_market_info(state()) -> ok.
+write_updated_jpx_market_info(State) ->
     {ok, Profile} = application:get_env(kabue, profile),
     {ok, Version} = application:get_env(kabue, version),
     Data = maps:fold(fun(Cell, Value, Acc)->
         {Column, Row} = cell(Cell),
-        {FieldKey, FieldValue} = parse_market_info(Column, Row, Value),
+        {FieldKey, FieldValue} = parse_jpx_market_info(Column, Row, Value),
         klsn_map:upsert([Row, FieldKey], FieldValue, Acc)
     end, #{}, maps:get(last_updated_cells, State)),
     Points = lists:filtermap(fun({Row, Field}) ->
@@ -318,7 +318,7 @@ write_updated_market_info(State) ->
         of
             {{value, Ticker}, {value, Ticker}} when size(Ticker) > 0 ->
                 {true, #{
-                    measurement => rakuten_rss_market_info
+                    measurement => rakuten_rss_jpx_market_info
                   , tag => #{
                         profile => Profile
                       , version => Version
@@ -365,7 +365,7 @@ read(Ticker, Start, Stop) ->
         bucket => {string, Bucket}
       , timeRangeStart => Start
       , timeRangeStop => Stop
-      , measurement => {string, rakuten_rss_market_info}
+      , measurement => {string, rakuten_rss_jpx_market_info}
       , ticker => Ticker
     },
     klsn_flux:q(Org, Query, Args).

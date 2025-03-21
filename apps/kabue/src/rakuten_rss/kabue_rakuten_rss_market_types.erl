@@ -1,14 +1,14 @@
 -module(kabue_rakuten_rss_market_types).
 
 -export_type([
-        market_info/0
+        jpx_market_info/0
     ]).
 
 -export([
-        market_info_keys/0
+        jpx_market_info_keys/0
     ]).
 
--type market_info() :: #{
+-type jpx_market_info() :: #{
     % 引数として指定した ticker
     ticker := klsn:binstr(),
     % 1 銘柄コード
@@ -310,11 +310,11 @@
 }.
 
 
--spec market_info_keys() -> [atom()].
-market_info_keys() ->
+-spec jpx_market_info_keys() -> [atom()].
+jpx_market_info_keys() ->
     {ok, Concrete} = dialyzer_utils:get_core_from_beam(code:which(?MODULE)),
     {ok, Types} = dialyzer_utils:get_record_and_type_info(Concrete),
-    MarketInfo = maps:get({type,market_info,0}, Types),
+    MarketInfo = maps:get({type,jpx_market_info,0}, Types),
     lists:map(fun({type, _, map_field_exact, [{atom, _, Key}|_]})->
         Key
     end, element(4, element(3, element(1, MarketInfo)))).
