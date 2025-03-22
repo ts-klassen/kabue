@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Tick-Level Heatmap with Configurable Oscillators, Ticker Name, & Vertical Markers on Oscillators</title>
+    <script src="https://d3js.org/d3.v5.min.js"></script>
+    <style>
+      body { 
+        font-family: sans-serif; 
+        font-size: 10px;
+      }
+      .axis path, .axis line { 
+        fill: none; 
+        stroke: #000;
+      }
+      .axis text { 
+        font-size: 10px;
+      }
+      .tooltip {
+        font-size: 10px;
+        white-space: nowrap;
+        position: absolute;
+        text-align: center;
+        padding: 3px;
+        background: lightsteelblue;
+        border: 0;
+        border-radius: 8px;
+        pointer-events: none;
+        opacity: 0;
+      }
+      #controls { 
+        margin-bottom: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="controls">
+      <label for="tickerInput">Ticker: </label>
+      <input type="text" id="tickerInput" value="2484">
+      <button id="updateButton">Update</button>
+    </div>
+    <div id="chartContainer"></div>
+    <div class="tooltip"></div>
+    <script>
+      // IMPORTANT TIMES for vertical markers (in "HH:MM" format)
+      const importantTimes = ["09:00", "11:30", "12:30", "15:30"];
+
+      // Helper: format Date in RFC3339 format (e.g., "2025-03-22T23:23:50+09:00")
+      function toRFC3339(date) {
+        function pad(num, size) {
+          var s = "0" + num;
+          return s.substr(s.length - size);
+        }
+        var year = date.getFullYear();
+        var month = pad(date.getMonth() + 1, 2);
+        var day = pad(date.getDate(), 2);
+        var hour = pad(date.getHours(), 2);
+        var minute = pad(date.getMinutes(), 2);
+        var second = pad(date.getSeconds(), 2);
+        var offset = date.getTimezoneOffset();
+        var absOffset = Math.abs(offset);
+        var offsetHour = pad(Math.floor(absOffset/60), 2);
+        var offsetMinute = pad(absOffset % 60, 2);
+        var sign = offset > 0 ? "-" : "+";
+        return year + "-" + month + "-" + day + "T" + hour + ":" + minute + ":" + second + sign + offsetHour + ":" + offsetMinute;
+      }
+      
+      // Helper: format duration (in seconds) as "hh:mm:ss"
+      function formatDuration(s) {
+        var hours = Math.floor(s / 3600);
+        var minutes = Math.floor((s % 3600) / 60);
+        var seconds = Math.floor(s % 60);
+        return (hours > 0 ? hours + "h " : "") +
+               (minutes > 0 ? minutes + "m " : "") +
+               seconds + "s";
+      }
+      
+      // Layout parameters
+      var cellSize = 20;                // For main order book cells
+      var greenHeatHeight = 20;         // Height for top time heatmap
+      var oscHeight = 20;               // Height for each bottom oscillator heatmap line
+      
+      // Configure oscillators (you can add or remove names)
+      const oscillators = ['volume', 'trade_value', 'volume_weighted_avg', 'morning_volume'];
+      
+      // Margins (top margin includes the top time heatmap)
+      var margin = { top: 40 + greenHeatHeight, right: 40, bottom: 60, left: 60 };
+
+      var tooltip = d3.select(".tooltip");
+
+      // Mapping functions for oscillators
+      var oscillatorValue = {
+        volume: function(rec) {
+          let sell = rec.sellLevels.reduce((acc, l) => acc + l.volume, 0);
+          let buy  = rec.buyLevels.reduce((acc, l) => acc + l.volume, 0);
+          return sell + buy;
+        },
+        trade_value: function(rec) {
+          return parseFloat(rec.fields.trade_value || 0);
+        },
+        volume_weighted_avg: function(rec) {
+          return parseFloat(rec.fields.volume_weighted_avg || 0);
+        },
+        morning_volume: function(rec) {
+          return parseFloat(rec.fields.morning_volume || 0);
+        }
+      };
+
+      // Create a color scale for an oscillator using a cyan style.
+      function makeOscillatorColor(values) {
+        return d3.scaleLinear()
+                 .domain([d3.min(values), d3.max(values)])
+                 .range(["#e0ffff", "#008b8b"]);
+      }
+
+      function drawChart(ticker) {
+        d3.select("#chartContainer").select("svg").remove();
+        var apiUrl = "/kabue/market/rakuten-rss/" + ticker;
+        d3.json(apiUrl).then(function(data) {
+          // Convert each object to a record with a "time" property (parsed from "timestamp")
+          // and a "fields" property that holds the entire object.
+          var records = data.map(function(d) {
+            return { time: new Date(d.timestamp), fields: d };
+          });
+          records.sort(function(a, b) { return a.time - b.time; });
+          
+          // Carry forward missing fields.
+          var lastFields = {};
+          records.forEach(function(rec) {
+            for (var key in lastFields) {
+              if (!(key in rec.fields)) { rec.fields[key] = lastFields[key]; }
+            }
+            Object.assign(lastFields, rec.fields);
+          });
+          
+          // Augment each record with order book levels.
+          records = records.map(function(rec) {
+            rec.sellLevels = [];
+            rec.buyLevels = [];
+            if(rec.fields["best_sell_price"]) {
+              rec.sellLevels.push({ 
+                price: parseFloat(rec.fields["best_sell_price"]),
+                volume: parseFloat(rec.fields["best_sell_volume"])
+              });
+            }
+            for (var i = 1; i <= 10; i++) {
+              var keyPrice = "best_sell_price_" + i;
+              var keyVolume = "best_sell_volume_" + i;
+              if(rec.fields[keyPrice]) {
+                rec.sellLevels.push({ 
+                  price: parseFloat(rec.fields[keyPrice]),
+                  volume: parseFloat(rec.fields[keyVolume])
+                });
+              }
+            }
+            if(rec.fields["best_buy_price"]) {
+              rec.buyLevels.push({ 
+                price: parseFloat(rec.fields["best_buy_price"]),
+                volume: parseFloat(rec.fields["best_buy_volume"])
+              });
+            }
+            for (var j = 1; j <= 10; j++) {
+              var keyPriceB = "best_buy_price_" + j;
+              var keyVolumeB = "best_buy_volume_" + j;
+              if(rec.fields[keyPriceB]) {
+                rec.buyLevels.push({ 
+                  price: parseFloat(rec.fields[keyPriceB]),
+                  volume: parseFloat(rec.fields[keyVolumeB])
+                });
+              }
+            }
+            return rec;
+          });
+          records = records.filter(function(rec) {
+            return (rec.sellLevels.length > 0) || (rec.buyLevels.length > 0);
+          });
+          
+          // Expose records to the global scope for debugging
+          window.records = records;
+          
+          if(records.length === 0) {
+            d3.select("#chartContainer").append("p")
+              .text("No valid data found for ticker: " + ticker);
+            return;
+          }
+          
+          // Get ticker_name.
+          var tickerName = records[0].fields.ticker_name || ticker;
+          
+          // Compute oscillator values.
+          var oscData = {};
+          oscillators.forEach(function(osc) {
+            oscData[osc] = records.map(oscillatorValue[osc]);
+          });
+          var oscColor = {};
+          oscillators.forEach(function(osc) {
+            oscColor[osc] = makeOscillatorColor(oscData[osc]);
+          });
+          
+          // Main order book heatmap: x axis = one column per tick.
+          var xBins = records.length;
+          var allPrices = [];
+          records.forEach(function(rec) {
+            rec.sellLevels.forEach(function(l) { allPrices.push(l.price); });
+            rec.buyLevels.forEach(function(l) { allPrices.push(l.price); });
+          });
+          var minPrice = d3.min(allPrices);
+          var maxPrice = d3.max(allPrices);
+          var floorPrice = Math.floor(minPrice);
+          var ceilPrice = Math.ceil(maxPrice);
+          var priceDomain = d3.range(floorPrice, ceilPrice + 1);
+          var yBins = priceDomain.length;
+          var overallWidth = cellSize * xBins;
+          var overallHeight = cellSize * yBins;
+          
+          // Order book color scales.
+          var maxSellVolume = d3.max(records, function(rec) { 
+            return d3.max(rec.sellLevels, function(l) { return l.volume; }) || 0;
+          });
+          var maxBuyVolume = d3.max(records, function(rec) { 
+            return d3.max(rec.buyLevels, function(l) { return l.volume; }) || 0;
+          });
+          var colorSell = d3.scaleSequential(d3.interpolateBlues).domain([0, maxSellVolume]);
+          var colorBuy = d3.scaleSequential(d3.interpolateReds).domain([0, maxBuyVolume]);
+          
+          // Create scales.
+          var xScale = d3.scaleBand().domain(d3.range(xBins)).range([0, overallWidth]).paddingInner(0).paddingOuter(0);
+          var yScale = d3.scaleBand().domain(priceDomain).range([overallHeight, 0]).paddingInner(0).paddingOuter(0);
+          
+          // Bottom oscillators total height.
+          var bottomHeight = oscillators.length * oscHeight;
+          var totalSVGHeight = margin.top + overallHeight + bottomHeight + margin.bottom;
+          
+          var svg = d3.select("#chartContainer")
+                      .append("svg")
+                      .attr("width", overallWidth + margin.left + margin.right)
+                      .attr("height", totalSVGHeight);
+          
+          svg.append("text")
+             .attr("x", margin.left)
+             .attr("y", margin.top - greenHeatHeight - 5)
+             .attr("text-anchor", "start")
+             .attr("fill", "#000")
+             .text("Ticker: " + tickerName);
+          
+          // ------------------ Top Time Heatmap ---------------------
+          var dt = [];
+          for (var i = 0; i < xBins - 1; i++) {
+            dt[i] = (records[i+1].time - records[i].time) / 1000;
+          }
+          dt[xBins - 1] = 0;
+          var greenColor = d3.scaleLinear().domain([0, 60]).range(["#e0ffe0", "#008000"]);
+          var yellowColor = d3.scaleLinear().domain([60, 3600]).range(["#ffffcc", "#ffff00"]);
+          svg.append("g")
+             .attr("transform", "translate(" + margin.left + "," + (margin.top - greenHeatHeight) + ")")
+             .selectAll("rect")
+             .data(dt)
+             .enter()
+             .append("rect")
+             .attr("x", function(d, i) { return xScale(i); })
+             .attr("y", 0)
+             .attr("width", xScale.bandwidth())
+             .attr("height", greenHeatHeight)
+             .attr("fill", function(d) {
+                if(d >= 3600) return "#000";
+                else if(d < 60) return greenColor(d);
+                else return yellowColor(d);
+             })
+             .attr("stroke", "#fff")
+             .attr("stroke-width", 0.5)
+             .on("mouseover", function(d, i) {
+                tooltip.transition().duration(200).style("opacity", 0.9);
+                tooltip.html("Duration: " + formatDuration(d) + "<br>Time: " + toRFC3339(records[i].time))
+                       .style("left", (d3.event.pageX + 10) + "px")
+                       .style("top", (d3.event.pageY - 28) + "px");
+             })
+             .on("mousemove", function() {
+                tooltip.style("left", (d3.event.pageX + 10) + "px")
+                       .style("top", (d3.event.pageY - 28) + "px");
+             })
+             .on("mouseout", function() {
+                tooltip.transition().duration(500).style("opacity", 0);
+             });
+          // -----------------------------------------------------------
+          
+          // ------------------- Main Order Book Heatmap --------------------------
+          var orderGroup = svg.append("g")
+                              .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+          records.forEach(function(d, i) {
+            d.sellLevels.forEach(function(level) {
+              var bin = Math.floor(level.price);
+              var yPos = yScale(bin);
+              orderGroup.append("rect")
+                .attr("x", xScale(i))
+                .attr("y", yPos)
+                .attr("width", xScale.bandwidth())
+                .attr("height", cellSize)
+                .attr("fill", colorSell(level.volume))
+                .attr("stroke", "#fff")
+                .attr("stroke-width", 0.5)
+                .on("mouseover", function() {
+                  tooltip.transition().duration(200).style("opacity", 0.9);
+                  tooltip.html("Time: " + toRFC3339(d.time) +
+                               "<br>Sell Price: " + level.price.toFixed(2) +
+                               "<br>Sell Volume: " + level.volume)
+                         .style("left", (d3.event.pageX + 10) + "px")
+                         .style("top", (d3.event.pageY - 28) + "px");
+                })
+                .on("mousemove", function() {
+                  tooltip.style("left", (d3.event.pageX + 10) + "px")
+                         .style("top", (d3.event.pageY - 28) + "px");
+                })
+                .on("mouseout", function() {
+                  tooltip.transition().duration(500).style("opacity", 0);
+                });
+            });
+            d.buyLevels.forEach(function(level) {
+              var bin = Math.floor(level.price);
+              var yPos = yScale(bin);
+              orderGroup.append("rect")
+                .attr("x", xScale(i))
+                .attr("y", yPos)
+                .attr("width", xScale.bandwidth())
+                .attr("height", cellSize)
+                .attr("fill", colorBuy(level.volume))
+                .attr("stroke", "#fff")
+                .attr("stroke-width", 0.5)
+                .on("mouseover", function() {
+                  tooltip.transition().duration(200).style("opacity", 0.9);
+                  tooltip.html("Time: " + toRFC3339(d.time) +
+                               "<br>Buy Price: " + level.price.toFixed(2) +
+                               "<br>Buy Volume: " + level.volume)
+                         .style("left", (d3.event.pageX + 10) + "px")
+                         .style("top", (d3.event.pageY - 28) + "px");
+                })
+                .on("mousemove", function() {
+                  tooltip.style("left", (d3.event.pageX + 10) + "px")
+                         .style("top", (d3.event.pageY - 28) + "px");
+                })
+                .on("mouseout", function() {
+                  tooltip.transition().duration(500).style("opacity", 0);
+                });
+            });
+          });
+          // -----------------------------------------------------------
+          
+          // ------------------- Bottom Oscillator Heatmaps --------------------------
+          var numOsc = oscillators.length;
+          // Add labels on the left for oscillators.
+          oscillators.forEach(function(osc, idx) {
+            svg.append("g")
+               .attr("transform", "translate(" + (margin.left - 5) + "," + (margin.top + overallHeight + idx * oscHeight + oscHeight/2) + ")")
+               .append("text")
+               .attr("text-anchor", "end")
+               .attr("dy", "0.35em")
+               .text(osc);
+          });
+          // Append each oscillator heatmap line.
+          oscillators.forEach(function(osc, idx) {
+            var oscValues = records.map(oscillatorValue[osc]);
+            var scaleOsc = makeOscillatorColor(oscValues);
+            var oscGroup = svg.append("g")
+                              .attr("transform", "translate(" + margin.left + "," + (margin.top + overallHeight + idx * oscHeight) + ")");
+            oscGroup.selectAll("rect")
+                    .data(oscValues)
+                    .enter()
+                    .append("rect")
+                    .attr("x", function(d, i) { return xScale(i); })
+                    .attr("y", 0)
+                    .attr("width", xScale.bandwidth())
+                    .attr("height", oscHeight)
+                    .attr("fill", function(d) { return scaleOsc(d); })
+                    .attr("stroke", "#fff")
+                    .attr("stroke-width", 0.5)
+                    .on("mouseover", function(d, i) {
+                      tooltip.transition().duration(200).style("opacity", 0.9);
+                      tooltip.html("Time: " + toRFC3339(records[i].time) +
+                                   "<br>" + osc + ": " + d)
+                             .style("left", (d3.event.pageX + 10) + "px")
+                             .style("top", (d3.event.pageY - 28) + "px");
+                    })
+                    .on("mousemove", function() {
+                      tooltip.style("left", (d3.event.pageX + 10) + "px")
+                             .style("top", (d3.event.pageY - 28) + "px");
+                    })
+                    .on("mouseout", function() {
+                      tooltip.transition().duration(500).style("opacity", 0);
+                    });
+          });
+          // -----------------------------------------------------------
+          
+          // ------------------- Vertical Markers (for order book and oscillators) ---------------------------
+          // Create a group for vertical markers. It will be added after oscillator heatmaps so that the lines are in front.
+          var verticalGroup = svg.append("g");
+          for (var i = 0; i < records.length - 1; i++) {
+            var t1 = records[i].time;
+            var t2 = records[i+1].time;
+            importantTimes.forEach(function(imp) {
+              var parts = imp.split(":");
+              var marker = new Date(t1);
+              marker.setHours(parseInt(parts[0]), parseInt(parts[1]), 0, 0);
+              if (t1 < marker && marker <= t2) {
+                verticalGroup.append("line")
+                  .attr("x1", xScale(i) + xScale.bandwidth() + margin.left)
+                  .attr("x2", xScale(i) + xScale.bandwidth() + margin.left)
+                  .attr("y1", margin.top - greenHeatHeight)
+                  .attr("y2", totalSVGHeight - margin.bottom)
+                  .attr("stroke", "#000")
+                  .attr("stroke-width", 1);
+              }
+            });
+          }
+          // By re-appending the verticalGroup to the SVG, we ensure that it appears on top of oscillator heatmaps.
+          svg.node().appendChild(verticalGroup.node());
+          // -----------------------------------------------------------
+          
+          // Append x-axis below bottom oscillator heatmaps.
+          var xAxis = d3.axisBottom(xScale)
+                        .tickValues(xScale.domain().filter(function(d, i) { return !(i % Math.ceil(xBins/10)); }))
+                        .tickFormat(function(i) { return toRFC3339(records[i].time); });
+          svg.append("g")
+             .attr("transform", "translate(" + margin.left + "," + (margin.top + overallHeight + numOsc * oscHeight) + ")")
+             .call(xAxis)
+             .append("text")
+             .attr("fill", "#000")
+             .attr("x", overallWidth)
+             .attr("y", 40)
+             .attr("text-anchor", "end")
+             .text("Time");
+          
+          // Append y-axis for main order book heatmap.
+          var yAxis = d3.axisLeft(yScale).tickFormat(String);
+          svg.append("g")
+             .attr("transform", "translate(" + margin.left + "," + margin.top + ")")
+             .call(yAxis)
+             .append("text")
+             .attr("fill", "#000")
+             .attr("transform", "rotate(-90)")
+             .attr("y", -50)
+             .attr("dy", "0.71em")
+             .attr("text-anchor", "end")
+             .text("Price");
+          
+        }).catch(function(error) {
+          console.error("Error fetching data for ticker " + ticker, error);
+          d3.select("#chartContainer").append("p")
+             .text("Error fetching data for ticker: " + ticker);
+        });
+      }
+
+      var defaultTicker = d3.select("#tickerInput").property("value");
+      drawChart(defaultTicker);
+      d3.select("#updateButton").on("click", function() {
+        var ticker = d3.select("#tickerInput").property("value");
+        drawChart(ticker);
+      });
+    </script>
+  </body>
+</html>

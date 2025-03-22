@@ -20,10 +20,16 @@ content_types_provided(Req, State) ->
 to_json(Req=#{bindings:=#{market:=<<"rakuten-rss">>, ticker:=Ticker}}, State) ->
     Market = lists:map(fun(Info)->
         maps:map(fun
+            (_, {value, Value}) when is_tuple(Value) ->
+                tuple_to_list(Value);
             (_, {value, Value}) ->
                 Value;
-            (_, _) ->
-                null
+            (_, none) ->
+                null;
+            (timestamp, Timestamp) ->
+                iolist_to_binary(calendar:system_time_to_rfc3339(
+                Timestamp
+              , [{unit, nanosecond}]))
         end, Info)
     end, kabue_rakuten_rss_market:historical(#{ ticker => Ticker })),
     JSON = jsone:encode(Market, [{float_format, [{decimals,16}, compact]}]),
