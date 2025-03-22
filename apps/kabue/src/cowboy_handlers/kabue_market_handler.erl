@@ -18,5 +18,14 @@ content_types_provided(Req, State) ->
     {[{<<"application/json">>, to_json}], Req, State}.
 
 to_json(Req=#{bindings:=#{market:=<<"rakuten-rss">>, ticker:=Ticker}}, State) ->
-    {jsone:encode(kabue_rakuten_rss_market:read(Ticker)), Req, State}.
+    Market = lists:map(fun(Info)->
+        maps:map(fun
+            (_, {value, Value}) ->
+                Value;
+            (_, _) ->
+                null
+        end, Info)
+    end, kabue_rakuten_rss_market:historical(#{ ticker => Ticker })),
+    JSON = jsone:encode(Market, [{float_format, [{decimals,16}, compact]}]),
+    {JSON, Req, State}.
 

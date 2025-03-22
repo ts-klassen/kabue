@@ -17,7 +17,7 @@
   0},
  {<<"klsn">>,
   {git,"https://github.com/ts-klassen/klsn.git",
-       {ref,"1ad9c0be31212595f8668c56ba5845d38c289781"}},
+       {ref,"85437889a99feda005bdb68f67ead2cb38ad8a30"}},
   0},
  {<<"observer_cli">>,{pkg,<<"observer_cli">>,<<"1.7.4">>},0},
  {<<"ranch">>,

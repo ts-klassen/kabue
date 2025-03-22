@@ -14,15 +14,14 @@
       , last_updated_rows/0
       , available_count/0
       , cell/1
-      , read/1
-      , read/2
-      , read/3
+      , historical/1
     ]).
 
 -export_type([
         ticker/0
       , column_number/0
       , row_number/0
+      , historical_time/0
     ]).
 
 -type ticker() :: klsn:binstr().
@@ -30,6 +29,11 @@
 -type column_number() :: pos_integer().
 
 -type row_number() :: 2..501.
+
+-type historical_time() :: klsn_flux:timestamp()
+                         | klsn_flux:date_time()
+                         | #{ s|m|h|d => integer() }
+                         | now.
 
 -type state() :: #{
         tickers := maps:map(ticker(), row_number())
@@ -208,7 +212,7 @@ jpx_market_info(Ticker, State) when is_binary(Ticker) ->
     end;
 jpx_market_info(Row, State) ->
     try
-        Keys = kabue_rakuten_rss_market_types:jpx_market_info_keys(),
+        TypeKeys = kabue_rakuten_rss_market_types:jpx_market_info_types(),
         case
             klsn_map:get([sheet, <<"data">>, cell(2, Row)], State, <<>>)
         of
@@ -217,9 +221,17 @@ jpx_market_info(Row, State) ->
             _ ->
                 ok
         end,
-        maps:from_list(lists:map(fun({Column, Key}) ->
-            {Key, klsn_map:get([sheet, <<"data">>, cell(Column, Row)], State, <<>>)}
-        end, lists:zip(lists:seq(1, length(Keys)), Keys)))
+        maps:from_list(lists:filtermap(fun({Column, {Type, Key}}) ->
+            RawValue = klsn_map:get([sheet, <<"data">>, cell(Column, Row)], State, <<>>),
+            case
+                kabue_rakuten_rss_market_types:convert(Type, Key, RawValue)
+            of
+                {value, Value} ->
+                    {true, {Key, Value}};
+                none ->
+                    false
+            end
+        end, lists:zip(lists:seq(1, length(TypeKeys)), TypeKeys)))
     of
         Value ->
             {value, Value}
@@ -342,43 +354,80 @@ write(Point) ->
     end),
     ok.
 
-
--spec read(ticker()) -> #{}.
-read(Ticker) ->
-    read(Ticker, {unary, <<"-">>, {duration, [{7, d}]}}).
-
--spec read(ticker(), klsn_flux:value()) -> #{}.
-read(Ticker, Start) ->
-    read(Ticker, Start, {call, now}).
-
--spec read(ticker(), klsn_flux:value(), klsn_flux:value()) -> #{}.
-read(Ticker, Start, Stop) ->
+-spec historical(#{
+        ticker => ticker
+      , start => historical_time()
+      , stop => historical_time()
+    }) -> [kabue_rakuten_rss_market_types:jpx_market_info()].
+historical(Opts) ->
     {ok, Org} = application:get_env(kabue, influxdb_organization),
     {ok, Bucket} = application:get_env(kabue, influxdb_bucket),
+    Ticker = maps:get(ticker, Opts, all),
+    Start = historical_time(maps:get(start, Opts, #{d=>7})),
+    Stop = historical_time(maps:get(stop, Opts, now)),
+    TickerFilter = case Ticker of
+        all -> <<>>;
+        <<"all">> -> <<>>;
+        _ ->
+            <<"|> filter(fn: (r) => r[\"ticker\"] == args.ticker)">>
+    end,
     Query = <<"
     from(bucket: args.bucket)
     |> range(start: args.timeRangeStart, stop: args.timeRangeStop)
     |> filter(fn: (r) => r[\"_measurement\"] == args.measurement)
-    |> filter(fn: (r) => r[\"ticker\"] == args.ticker)
-    ">>,
+    ", TickerFilter/binary>>,
     Args = #{
         bucket => {string, Bucket}
       , timeRangeStart => Start
       , timeRangeStop => Stop
       , measurement => {string, rakuten_rss_jpx_market_info}
-      , ticker => Ticker
+      , ticker => {string, Ticker}
     },
-    klsn_flux:q(Org, Query, Args).
+    List = lists:filter(fun
+        (#{<<"_time">>:=_})-> true;
+        (_) -> false
+    end, klsn_flux:q(Org, Query, Args)),
+    TableMap = lists:foldl(fun(Elem0, Acc)->
+        #{<<"_field">>:=Field, <<"_value">>:=Value} = Elem0,
+        Elem10 = maps:remove(<<"_field">>, Elem0),
+        Elem20 = maps:remove(<<"_value">>, Elem10),
+        Elem30 = maps:remove(<<"_start">>, Elem20),
+        Elem40 = maps:remove(<<"_stop">>, Elem30),
+        Elem50 = maps:remove(<<"table">>, Elem40),
+        klsn_map:upsert([Elem50, Field], Value, Acc)
+    end, #{}, List),
+    {_, TableList} = lists:unzip(lists:sort(lists:map(fun({K, V})->
+        {maps:get(<<"_time">>, K), maps:merge(K, V)}
+    end, maps:to_list(TableMap)))),
+    TypeKeys = kabue_rakuten_rss_market_types:jpx_market_info_types(),
+    lists:map(fun(Data)->
+        Point = maps:from_list(lists:filtermap(fun({Type, Name})->
+            BinName = atom_to_binary(Name),
+            case Data of
+                #{BinName := BinValue} ->
+                    {true, {Name,
+                            kabue_rakuten_rss_market_types:convert(Type, Name, BinValue)}};
+                _ ->
+                    false
+            end
+        end, TypeKeys)),
+        Point#{
+            timestamp => calendar:rfc3339_to_system_time(
+                binary_to_list(maps:get(<<"_time">>, Data))
+              , [{unit, nanosecond}])
+        }
+    end, TableList).
 
-
-
-
-
-
-
-
-
-
-
-
+-spec historical_time(historical_time()) -> klsn_flux:value().
+historical_time(now) ->
+    {call, now};
+historical_time(Timestamp) when is_integer(Timestamp) ->
+    klsn_flux:value({timestamp, Timestamp});
+historical_time(Time) when is_binary(Time) ->
+    klsn_flux:value({date_time, Time});
+historical_time(Map) when is_map(Map) ->
+    Duration = maps:fold(fun(Unit, Mag, Acc)->
+        [{Mag, Unit}|Acc]
+    end, [], Map),
+    {unary, <<"-">>, {duration, Duration}}.
 
