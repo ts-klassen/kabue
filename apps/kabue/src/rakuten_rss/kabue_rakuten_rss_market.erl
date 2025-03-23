@@ -368,6 +368,10 @@ historical(Opts) ->
     TickerFilter = case Ticker of
         all -> <<>>;
         <<"all">> -> <<>>;
+        Enum when Enum =:= list orelse Enum =:= <<"list">> ->
+            <<"|> filter(fn: (r) => r[\"_field\"] == \"ticker_name\")
+               |> distinct(column: \"_value\")
+               |> yield(name: \"ticker_names\")">>;
         _ ->
             <<"|> filter(fn: (r) => r[\"ticker\"] == args.ticker)">>
     end,
@@ -383,8 +387,15 @@ historical(Opts) ->
       , measurement => {string, rakuten_rss_jpx_market_info}
       , ticker => {string, Ticker}
     },
-    List = lists:filter(fun
+    List = lists:filtermap(fun
         (#{<<"_time">>:=_})-> true;
+        (#{<<"result">>:=<<"ticker_names">>}=Doc)->
+            {true, #{
+                <<"_time">> => klsn_db:time_now()
+              , <<"_field">> => maps:get(<<"_field">>, Doc)
+              , <<"_value">> => maps:get(<<"_value">>, Doc)
+              , <<"ticker">> => maps:get(<<"ticker">>, Doc)
+            }};
         (_) -> false
     end, klsn_flux:q(Org, Query, Args)),
     TableMap = lists:foldl(fun(Elem0, Acc)->

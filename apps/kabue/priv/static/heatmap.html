@@ -31,14 +31,20 @@
       #controls { 
         margin-bottom: 10px;
       }
+      #tickerNameDisplay {
+        margin-bottom: 10px;
+        font-weight: bold;
+      }
     </style>
   </head>
   <body>
     <div id="controls">
       <label for="tickerInput">Ticker: </label>
-      <input type="text" id="tickerInput" value="2484">
+      <input type="text" id="tickerInput" list="tickerOptions" value="2484">
+      <datalist id="tickerOptions"></datalist>
       <button id="updateButton">Update</button>
     </div>
+    <div id="tickerNameDisplay"></div>
     <div id="chartContainer"></div>
     <div class="tooltip"></div>
     <script>
@@ -181,11 +187,14 @@
           if(records.length === 0) {
             d3.select("#chartContainer").append("p")
               .text("No valid data found for ticker: " + ticker);
+            d3.select("#tickerNameDisplay").text("Ticker Name: " + ticker);
             return;
           }
           
           // Get ticker_name.
           var tickerName = records[0].fields.ticker_name || ticker;
+          // Display selected ticker_name in the UI.
+          d3.select("#tickerNameDisplay").text("Ticker Name: " + tickerName);
           
           // Compute oscillator values.
           var oscData = {};
@@ -390,7 +399,6 @@
           // -----------------------------------------------------------
           
           // ------------------- Vertical Markers (for order book and oscillators) ---------------------------
-          // Create a group for vertical markers. It will be added after oscillator heatmaps so that the lines are in front.
           var verticalGroup = svg.append("g");
           for (var i = 0; i < records.length - 1; i++) {
             var t1 = records[i].time;
@@ -410,7 +418,6 @@
               }
             });
           }
-          // By re-appending the verticalGroup to the SVG, we ensure that it appears on top of oscillator heatmaps.
           svg.node().appendChild(verticalGroup.node());
           // -----------------------------------------------------------
           
@@ -445,13 +452,31 @@
           console.error("Error fetching data for ticker " + ticker, error);
           d3.select("#chartContainer").append("p")
              .text("Error fetching data for ticker: " + ticker);
+          d3.select("#tickerNameDisplay").text("Ticker Name: " + ticker);
         });
       }
 
-      var defaultTicker = d3.select("#tickerInput").property("value");
-      drawChart(defaultTicker);
+      // Populate the datalist with ticker suggestions from the API
+      d3.json("/kabue/market/rakuten-rss/list")
+        .then(function(data) {
+          var datalist = d3.select("#tickerOptions");
+          data.forEach(function(d) {
+            datalist.append("option")
+                    .attr("value", d.ticker)
+                    .text(d.ticker + " - " + d.ticker_name);
+          });
+          // Optionally set a default value if needed.
+          document.getElementById("tickerInput").value = data.length > 0 ? data[0].ticker : "2484";
+          drawChart(document.getElementById("tickerInput").value);
+        })
+        .catch(function(error) {
+          console.error("Error fetching ticker list:", error);
+          // Fallback to a default ticker if the fetch fails.
+          drawChart("2484");
+        });
+
       d3.select("#updateButton").on("click", function() {
-        var ticker = d3.select("#tickerInput").property("value");
+        var ticker = document.getElementById("tickerInput").value;
         drawChart(ticker);
       });
     </script>
