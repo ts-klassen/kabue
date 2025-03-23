@@ -33,6 +33,12 @@ init([]) ->
           , restart => permanent
           , type => supervisor
         }
+      , #{
+            id => kabue_health_1
+          , start => {kabue_health, start_link, []}
+          , restart => permanent
+          , type => worker
+        }
     ],
     SupFlags = #{strategy => one_for_one,
                  intensity => length(ChildSpecs) + 1,

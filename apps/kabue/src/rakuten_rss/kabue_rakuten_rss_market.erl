@@ -91,24 +91,20 @@ handle_call({webhook, Body}, _From, State0) ->
             {<<"diff">>, Hook#{<<"data">> => Data}}
     end,
     UpdateSheet = klsn_map:get([update_sheet], State0),
-    TimeNow = klsn_flux:timestamp(),
     State10 = State0#{
             update_sheet => #{}
           , sheet => Sheet
           , last_updated_cells => klsn_map:get([<<"data">>], Hook)
-          , last_webhook_at => TimeNow
+          , last_webhook_at => klsn_flux:timestamp()
         },
     State30 = case maps:size(klsn_map:get([<<"data">>], Hook)) of
         0 ->
             State10;
         _ ->
-            State20 = State10#{
-                last_updated_at => TimeNow
-            },
             lists:foreach(fun(OnUpdate) ->
-                spawn(fun() -> OnUpdate(State20) end)
-            end, maps:get(on_update, State20)),
-            State20
+                spawn(fun() -> OnUpdate(State10) end)
+            end, maps:get(on_update, State10)),
+            State10
     end,
     {reply, jsone:encode(UpdateSheet#{<<"A1">> => A1}), State30};
 handle_call({lookup_by_ticker, Ticker}, _From, State) ->
@@ -153,7 +149,13 @@ handle_cast({remove_ticker, Ticker}, State0) ->
             },
             klsn_map:upsert([update_sheet, cell(1, Row)], <<>>, State10)
     end,
+    {noreply, State};
+handle_cast({set_last_updated_at, Timestamp}, State0) ->
+    State = State0#{
+        last_updated_at => Timestamp
+    },
     {noreply, State}.
+
 
 handle_info(Info, State) ->
     error_logger:info_msg("function=~p:~p/~p, line=~p~ninfo=~p", [
@@ -342,6 +344,17 @@ write_updated_jpx_market_info(State) ->
                 false
         end
     end, maps:to_list(Data)),
+    case length(Points) of
+        0 -> ok;
+        _ ->
+            gen_server:cast(
+                ?MODULE
+              , {
+                    set_last_updated_at 
+                  , maps:get(last_webhook_at, State)
+                }
+            )
+    end,
     write(Points).
 
 
