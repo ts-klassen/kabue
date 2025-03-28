@@ -49,8 +49,8 @@
       , update_sheet := #{
           % <<"A1">> => <<"diff">>
         }
-      , last_webhook_at => klsn:maybe(non_neg_integer())
-      , last_updated_at => klsn:maybe(non_neg_integer())
+      , last_webhook_at => klsn:maybe(klsn_flux:timestamp())
+      , last_updated_at => klsn:maybe(klsn_flux:timestamp())
       , last_updated_cells := [row_number()]
       , on_update := [fun( (state()) -> any() )]
     }.
@@ -186,11 +186,11 @@ add(Ticker) ->
 remove(Ticker) ->
     gen_server:cast(?MODULE, {remove_ticker, Ticker}).
 
--spec last_updated_at() -> klsn:maybe(non_neg_integer()).
+-spec last_updated_at() -> klsn:maybe(klsn_flux:timestamp()).
 last_updated_at() ->
     gen_server:call(?MODULE, last_updated_at).
 
--spec last_webhook_at() -> klsn:maybe(non_neg_integer()).
+-spec last_webhook_at() -> klsn:maybe(klsn_flux:timestamp()).
 last_webhook_at() ->
     gen_server:call(?MODULE, last_webhook_at).
 

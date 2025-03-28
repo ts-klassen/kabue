@@ -28,6 +28,14 @@
           , is_login_required := boolean()
           , is_available_time := boolean()
         }
+      , kabue_mufje_ws_apic := #{
+            real | test := #{
+                is_connected := boolean()
+              , time_since_update := -1 | non_neg_integer()
+              , time_since_websocket := -1 | non_neg_integer()
+              , date_size := non_neg_integer()
+            }
+        }
       , health := boolean()
       , timestamp := klsn_flux:timestamp()
     }.
@@ -42,6 +50,7 @@ status() ->
         kabue_rakuten_rss_market => kabue_rakuten_rss_market()
       , kabue_health => kabue_health()
       , kabue_mufje_rest_apic => kabue_mufje_rest_apic()
+      , kabue_mufje_ws_apic => kabue_mufje_ws_apic()
       , timestamp => klsn_flux:timestamp()
     },
     Health = lists:all(fun(Bool) -> Bool end, [
@@ -53,27 +62,31 @@ status() ->
       , klsn_map:get([kabue_health, time_since_update], Status) < 62
       , klsn_map:get([kabue_health, time_since_update], Status) =/= -1
       , klsn_map:get([kabue_mufje_rest_apic, success], Status)
-            orelse not klsn_map:get([kabue_mufje_rest_apic, is_available_time], Status)
+            orelse not klsn_map:get(
+                [kabue_mufje_rest_apic, is_available_time], Status)
+      , klsn_map:get([kabue_mufje_ws_apic, real, is_connected], Status)
+      , klsn_map:get([kabue_mufje_ws_apic, test, is_connected], Status)
     ]),
     Status#{
         health => Health
     }.
 
 kabue_rakuten_rss_market() ->
+    TimeNow = klsn_flux:timestamp(),
     #{
         time_since_update => case
-            {kabue_rakuten_rss_market:last_updated_at(), klsn_flux:timestamp()}
+            kabue_rakuten_rss_market:last_updated_at()
         of
-            {{value, Time0}, Time1} ->
-                (Time1 - Time0) div 1000000000;
+            {value, Time0} ->
+                (TimeNow - Time0) div 1000000000;
             _ ->
                 -1
         end
       , time_since_webhook => case
-            {kabue_rakuten_rss_market:last_webhook_at(), klsn_flux:timestamp()}
+            kabue_rakuten_rss_market:last_webhook_at()
         of
-            {{value, Time0}, Time1} ->
-                (Time1 - Time0) div 1000000000;
+            {value, Time0} ->
+                (TimeNow - Time0) div 1000000000;
             _ ->
                 -1
         end
@@ -81,12 +94,11 @@ kabue_rakuten_rss_market() ->
     }.
 
 kabue_health() ->
+    TimeNow = klsn_flux:timestamp(),
     #{
-        time_since_update => case
-            {kabue_health:lookup(), klsn_flux:timestamp()}
-        of
-            {{value, #{timestamp:=Time0}}, Time1} ->
-                (Time1 - Time0) div 1000000000;
+        time_since_update => case kabue_health:lookup() of
+            {value, #{timestamp:=Time0}} ->
+                (TimeNow - Time0) div 1000000000;
             _ ->
                 -1
         end
@@ -156,4 +168,35 @@ is_mufje_available_time() ->
         {6, M, _} when 15 =< M, M < 30 -> false;
         _ -> true
     end.
+
+
+kabue_mufje_ws_apic() ->
+    #{
+        real => kabue_mufje_ws_apic(real)
+      , test => kabue_mufje_ws_apic(test)
+    }.
+
+kabue_mufje_ws_apic(Mode) ->
+    TimeNow = klsn_flux:timestamp(),
+    #{
+        is_connected => kabue_mufje_ws_apic:is_connected(Mode)
+      , time_since_update => case
+            kabue_mufje_ws_apic:last_updated_at(Mode)
+        of
+            {value, Time0} ->
+                (TimeNow - Time0) div 1000000000;
+            _ ->
+                -1
+        end
+      , time_since_websocket => case
+            kabue_mufje_ws_apic:last_websocket_at(Mode)
+        of
+            {value, Time0} ->
+                (TimeNow - Time0) div 1000000000;
+            _ ->
+                -1
+        end
+      , data_size => kabue_mufje_ws_apic:data_size(Mode)
+    }.
+
 
