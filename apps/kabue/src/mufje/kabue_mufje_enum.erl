@@ -15,7 +15,14 @@
         order_status/0,
         ranking_type/0,
         exchange_division/0,
-        symbol/0
+        symbol/0,
+        trigger_sec/0,
+        under_over/0,
+        after_hit_order_type/0,
+        price_change_status/0,
+        price_status/0,
+        board_sign/0,
+        instrument_type/0
     ]).
 
 -export([
@@ -33,8 +40,17 @@
         order_status/0,
         ranking_type/0,
         exchange_division/0,
-        symbol/0
+        symbol/0,
+        trigger_sec/0,
+        under_over/0,
+        after_hit_order_type/0,
+        price_change_status/0,
+        price_status/0,
+        board_sign/0,
+        instrument_type/0
     ]).
+
+%% Type Definitions
 
 -type exchange() :: tokyo       % 東証
                   | nagoya      % 名証
@@ -138,9 +154,9 @@
                       .
 
 -type exchange_division() :: all_market    % 全市場（デフォルト）
-                           | tose_total    % 東証全体
-                           | tose_prime    % 東証プライム
-                           | tose_standard % 東証スタンダード
+                           | tse_total    % 東証全体
+                           | tse_prime    % 東証プライム
+                           | tse_standard % 東証スタンダード
                            | growth250     % グロース250
                            | nagoya        % 名証
                            | fukusho       % 福証
@@ -159,6 +175,93 @@
                 | gbp_usd   % GBP/USD
                 | aud_usd   % AUD/USD
                 .
+
+-type trigger_sec() :: order      % 発注銘柄
+                     | nk225      % NK225指数
+                     | topix      % TOPIX指数
+                     .
+
+-type under_over() :: below     % 以下
+                    | above     % 以上
+                    .
+
+-type after_hit_order_type() :: market    % 成行
+                              | limit     % 指値
+                              | nonlimit  % 不成
+                              .
+
+-type price_change_status() :: event_none % 事象なし
+                             | unchanged % 変わらず
+                             | up % UP
+                             | down % DOWN
+                             | first_after_pause % 中断板寄り後の初値
+                             | regular_close % ザラバ引け
+                             | order_close % 板寄り引け
+                             | pause_close % 中断引け
+                             | down_close % ダウン引け
+                             | reversal_close % 逆転終値
+                             | special_close % 特別気配引け
+                             | temp_hold_close % 一時留保引け
+                             | trading_stop_close % 売買停止引け
+                             | circuit_breaker_close % サーキットブレーカ引け
+                             | dynamic_circuit_breaker_close % ダイナミックサーキットブレーカ引け
+                             .
+
+-type price_status() :: price % 現値
+                       | discontinuous_walking % 不連続歩み
+                       | order_matching % 板寄せ
+                       | system_error % システム障害
+                       | pause % 中断
+                       | trading_stop % 売買停止
+                       | trading_stop_system_release % 売買停止・システム停止解除
+                       | close % 終値
+                       | system_stop % システム停止
+                       | approximate % 概算値
+                       | reference % 参考値
+                       | circuit_break_ongoing % サーキットブレイク実施中
+                       | system_error_release % システム障害解除
+                       | circuit_break_release % サーキットブレイク解除
+                       | pause_release % 中断解除
+                       | temporary_hold % 一時留保中
+                       | temporary_hold_release % 一時留保解除
+                       | file_error % ファイル障害
+                       | file_error_release % ファイル障害解除
+                       | spread_strategy % Spread/Strategy
+                       | dynamic_circuit_breaker_trigger % ダイナミックサーキットブレイク発動
+                       | dynamic_circuit_breaker_release % ダイナミックサーキットブレイク解除
+                       | matched_order % 板寄せ約定
+                       .
+
+-type board_sign() :: event_none % 事象なし
+              | general_quote % 一般気配
+              | special_quote % 特別気配
+              | caution_quote % 注意気配
+              | pre_open_quote % 寄前気配
+              | pre_stop_special_quote % 停止前特別気配
+              | post_close_quote % 引け後気配
+              | pre_quote_match_no_point % 寄前気配約定成立ポイントなし
+              | pre_quote_match_with_point % 寄前気配約定成立ポイントあり
+              | continuous_quote % 連続約定気配
+              | continuous_quote_pre_stop % 停止前の連続約定気配
+              | upward_quote % 買い上がり売り下がり中
+              .
+
+-type instrument_type() :: index % 指数
+                         | spot % 現物
+                         | nikkei225_future % 日経225先物
+                         | nikkei225_op % 日経225OP
+                         | topix_future % TOPIX先物
+                         | jpx400_future % JPX400先物
+                         | ny_dow % NYダウ
+                         | nikkei_average_vi % 日経平均VI
+                         | growth250_future % グロース250先物
+                         | topix_reit % TOPIX_REIT
+                         | topix_core30 % TOPIX CORE30
+                         | nikkei225_mini_future % 日経平均225ミニ先物
+                         | topix_mini_future % TOPIXミニ先物
+                         .
+
+%% Function Definitions
 
 -spec exchange() -> maps:map(exchange(), integer()).
 exchange() ->
@@ -304,9 +407,9 @@ ranking_type() ->
 exchange_division() ->
     #{
         all_market    => <<"ALL">>,
-        tose_total    => <<"T">>,
-        tose_prime    => <<"TP">>,
-        tose_standard => <<"TS">>,
+        tse_total     => <<"T">>,
+        tse_prime     => <<"TP">>,
+        tse_standard  => <<"TS">>,
         growth250     => <<"TG">>,
         nagoya        => <<"M">>,
         fukusho       => <<"FK">>,
@@ -328,3 +431,111 @@ symbol() ->
         gbp_usd => <<"gbpusd">>,
         aud_usd => <<"audusd">>
     }.
+
+-spec trigger_sec() -> maps:map(trigger_sec(), integer()).
+trigger_sec() ->
+    #{
+        order => 1,
+        nk225 => 2,
+        topix => 3
+    }.
+
+-spec under_over() -> maps:map(under_over(), integer()).
+under_over() ->
+    #{
+        below => 1,
+        above => 2
+    }.
+
+-spec after_hit_order_type() -> maps:map(after_hit_order_type(), integer()).
+after_hit_order_type() ->
+    #{
+        market   => 1,
+        limit    => 2,
+        nonlimit => 3
+    }.
+
+-spec price_change_status() -> maps:map(price_change_status(), klsn:binstr()).
+price_change_status() ->
+    #{
+        event_none => <<"0000">>,
+        unchanged => <<"0056">>,
+        up => <<"0057">>,
+        down => <<"0058">>,
+        first_after_pause => <<"0059">>,
+        regular_close => <<"0060">>,
+        order_close => <<"0061">>,
+        pause_close => <<"0062">>,
+        down_close => <<"0063">>,
+        reversal_close => <<"0064">>,
+        special_close => <<"0066">>,
+        temp_hold_close => <<"0067">>,
+        trading_stop_close => <<"0068">>,
+        circuit_breaker_close => <<"0069">>,
+        dynamic_circuit_breaker_close => <<"0431">>
+    }.
+
+-spec price_status() -> maps:map(price_status(), integer()).
+price_status() ->
+    #{
+        price => 1,
+        discontinuous_walking => 2,
+        order_matching => 3,
+        system_error => 4,
+        pause => 5,
+        trading_stop => 6,
+        trading_stop_system_release => 7,
+        close => 8,
+        system_stop => 9,
+        approximate => 10,
+        reference => 11,
+        circuit_break_ongoing => 12,
+        system_error_release => 13,
+        circuit_break_release => 14,
+        pause_release => 15,
+        temporary_hold => 16,
+        temporary_hold_release => 17,
+        file_error => 18,
+        file_error_release => 19,
+        spread_strategy => 20,
+        dynamic_circuit_breaker_trigger => 21,
+        dynamic_circuit_breaker_release => 22,
+        matched_order => 23
+    }.
+
+-spec board_sign() -> maps:map(board_sign(), klsn:binstr()).
+board_sign() ->
+    #{
+        event_none => <<"0000">>,
+        general_quote => <<"0101">>,
+        special_quote => <<"0102">>,
+        caution_quote => <<"0103">>,
+        pre_open_quote => <<"0107">>,
+        pre_stop_special_quote => <<"0108">>,
+        post_close_quote => <<"0109">>,
+        pre_quote_match_no_point => <<"0116">>,
+        pre_quote_match_with_point => <<"0117">>,
+        continuous_quote => <<"0118">>,
+        continuous_quote_pre_stop => <<"0119">>,
+        upward_quote => <<"0120">>
+    }.
+
+-spec instrument_type() -> maps:map(instrument_type(), integer()).
+instrument_type() ->
+    #{
+        index => 0,
+        spot => 1,
+        nikkei225_future => 101,
+        nikkei225_op => 103,
+        topix_future => 107,
+        jpx400_future => 121,
+        ny_dow => 144,
+        nikkei_average_vi => 145,
+        growth250_future => 154,
+        topix_reit => 155,
+        topix_core30 => 171,
+        nikkei225_mini_future => 901,
+        topix_mini_future => 907
+    }.
+
+%% EOF

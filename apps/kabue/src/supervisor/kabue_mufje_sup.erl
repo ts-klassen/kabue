@@ -3,7 +3,7 @@
 %% @end
 %%%-------------------------------------------------------------------
 
--module(kabue_sup).
+-module(kabue_mufje_sup).
 
 -behaviour(supervisor).
 
@@ -28,22 +28,10 @@ start_link() ->
 init([]) ->
     ChildSpecs = [
         #{
-            id => kabue_rakuten_sup_1
-          , start => {kabue_rakuten_sup, start_link, []}
-          , restart => permanent
-          , type => supervisor
-        }
-      , #{
-            id => kabue_health_1
-          , start => {kabue_health, start_link, []}
+            id => kabue_mufje_ws_apic_1
+          , start => {kabue_mufje_ws_apic, start_link, []}
           , restart => permanent
           , type => worker
-        }
-      , #{
-            id => kabue_mufje_sup_1
-          , start => {kabue_mufje_sup, start_link, []}
-          , restart => permanent
-          , type => supervisor
         }
     ],
     SupFlags = #{strategy => one_for_one,

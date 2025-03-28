@@ -11,6 +11,7 @@
     inets,
     jsone,
     gpte,
+    gun,
     os_mon,
     observer_cli
    ]},

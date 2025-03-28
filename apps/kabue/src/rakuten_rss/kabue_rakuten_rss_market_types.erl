@@ -1,4 +1,5 @@
 -module(kabue_rakuten_rss_market_types).
+% https://marketspeed.jp/guide/manual/ms2rss_function.pdf
 
 -export_type([
         jpx_market_info/0
