@@ -106,8 +106,22 @@ handle_info({gun_upgrade, _Pid, Ref, _, _}, State0) ->
     State10 = klsn_map:upsert([Mode, is_upgraded], true, State0),
     State20 = klsn_map:upsert([Mode, last_websocket_at], {value, Timestamp}, State10),
     {noreply, State20};
-handle_info({gun_down, _Pid, ws, closed, [Ref]}, State0) ->
+handle_info({gun_down, _Pid, Proto, Reason, [Ref]}, State0)
+    when (Proto =:= ws orelse Proto =:= http) andalso
+         (Reason =:= closed orelse Reason =:= normal) ->
     io:format("gun_down~n"),
+    Mode = mode_from_ref(Ref, State0),
+    State10 = klsn_map:upsert([Mode, stream_ref], none, State0),
+    State20 = klsn_map:upsert([Mode, is_upgraded], false, State10),
+    {noreply, State20};
+handle_info({gun_ws, _Pid, Ref, close}, State0) ->
+    io:format("gun_ws close~n"),
+    Mode = mode_from_ref(Ref, State0),
+    State10 = klsn_map:upsert([Mode, stream_ref], none, State0),
+    State20 = klsn_map:upsert([Mode, is_upgraded], false, State10),
+    {noreply, State20};
+handle_info({gun_error, _Pid, Ref, closed}, State0) ->
+    io:format("gun_error closed~n"),
     Mode = mode_from_ref(Ref, State0),
     State10 = klsn_map:upsert([Mode, stream_ref], none, State0),
     State20 = klsn_map:upsert([Mode, is_upgraded], false, State10),
@@ -151,7 +165,7 @@ handle_info(Info, State) ->
           , ?FUNCTION_ARITY
           , ?LINE
           , Info
-          , State
+          , klsn_map:upsert([real, data], 'OMMIT', State)
         ]),
     {noreply, State}.
 
