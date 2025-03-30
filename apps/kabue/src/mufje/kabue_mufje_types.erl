@@ -213,17 +213,17 @@ payload_to_board(Payload0) ->
 board_keys() ->
     {ok, Concrete} = dialyzer_utils:get_core_from_beam(code:which(?MODULE)),
     {ok, Types} = dialyzer_utils:get_record_and_type_info(Concrete),
-    MarketInfo = maps:get({type,board,0}, Types),
+    Board = maps:get({type,board,0}, Types),
     lists:map(fun({type, _, _, [{atom, _, Key}|_]})->
         Key
-    end, element(4, element(3, element(1, MarketInfo)))).
+    end, element(4, element(3, element(1, Board)))).
 
 
 -spec board_types() -> [{string | float | date_time | {kabue_mufje_enum, atom()}, atom()}].
 board_types() ->
     {ok, Concrete} = dialyzer_utils:get_core_from_beam(code:which(?MODULE)),
     {ok, Types} = dialyzer_utils:get_record_and_type_info(Concrete),
-    MarketInfo = maps:get({type,board,0}, Types),
+    Board = maps:get({type,board,0}, Types),
     lists:map(fun({type, _, _, [{atom, _, Key}|T]})->
         Type = case T of
             [{remote_type,_,[{atom,_,klsn},{atom,_,binstr},[]]}] ->
@@ -236,7 +236,7 @@ board_types() ->
                 {kabue_mufje_enum, EType}
         end,
         {Type, Key}
-    end, element(4, element(3, element(1, MarketInfo)))).
+    end, element(4, element(3, element(1, Board)))).
 
 
 -spec convert(string, klsn:binstr(), atom()) -> klsn:binstr();
