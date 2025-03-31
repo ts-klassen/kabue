@@ -16,6 +16,7 @@
       , token/1
       , ranking/2
       , order/2
+      , orders/2
       , register/2
       , unregister/2
       , unregister_all/1
@@ -198,6 +199,33 @@ order(ReqPayload0, Options) ->
     case Res of
         {right, #{<<"OrderId">> := Id, <<"Result">> := 0}} ->
             {right, Id};
+        {left, Left} ->
+            {left, Left}
+    end.
+
+
+-spec orders(
+        #{
+            id => order_id()
+          % TODO: add args
+        }
+      , options()
+    ) -> either(order_id()).
+orders(ReqPayload0, Options) ->
+    ReqPayload = maps:from_list(lists:filtermap(fun
+        ({id, Id}) ->
+            {true, {<<"id">>, Id}};
+        (_) -> false
+    end, maps:to_list(ReqPayload0))),
+    Res = request(#{
+        uri => <<"/kabusapi/orders">>
+      , method => get
+      , q => ReqPayload
+    }, Options),
+    case Res of
+        {right, ResList} ->
+            % TODO: parse response
+            {right, ResList};
         {left, Left} ->
             {left, Left}
     end.
