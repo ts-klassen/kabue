@@ -15,6 +15,8 @@
       , available_count/0
       , cell/1
       , historical/1
+      , add_on_limit_callback/1
+      , remove_on_limit_callback/1
     ]).
 
 -export_type([
@@ -53,6 +55,7 @@
       , last_updated_at => klsn:maybe(klsn_flux:timestamp())
       , last_updated_cells := [row_number()]
       , on_update := [fun( (state()) -> any() )]
+      , on_limit := [fun( (ticker(), [ticker()]) -> any() )]
     }.
 
 
@@ -67,6 +70,7 @@ init(_Settings) ->
           , sheet => #{<<"current_etag">> => <<"none">>, <<"data">> => #{}}
           , last_updated_cells => []
           , on_update => [ fun write_updated_jpx_market_info/1 ]
+          , on_limit => []
           , update_sheet => maps:from_list(lists:map(fun(I) ->
                 {cell(1, I), <<>>}
             end, lists:seq(2, 501)))
@@ -125,17 +129,27 @@ handle_call(debug_dump_state, _From, State) ->
     {reply, State, State}.
 
 handle_cast({add_ticker, Ticker}, State0) ->
-    State = case klsn_map:lookup([tickers, Ticker], State0) of
-        {value, _} ->
-            State0;
+    case klsn_map:lookup([tickers, Ticker], State0) of
+        {value, _Row} ->
+            {noreply, State0};
         none ->
-            [Row|Rows] = maps:get(available_rows, State0),
-            State10 = klsn_map:upsert([tickers, Ticker], Row, State0#{
-                available_rows => Rows
-            }),
-            klsn_map:upsert([update_sheet, cell(1, Row)], Ticker, State10)
-    end,
-    {noreply, State};
+            case maps:get(available_rows, State0) of
+                [] ->
+                    %% No free rows – notify limit callbacks asynchronously.
+                    Callbacks = maps:get(on_limit, State0, []),
+                    CurrentTickers = maps:keys(maps:get(tickers, State0)),
+                    lists:foreach(fun(F) ->
+                        spawn(fun() -> F(Ticker, CurrentTickers) end)
+                    end, Callbacks),
+                    {noreply, State0};
+                [Row | Rows] ->
+                    State10 = klsn_map:upsert([tickers, Ticker], Row, State0#{
+                        available_rows => Rows
+                    }),
+                    State = klsn_map:upsert([update_sheet, cell(1, Row)], Ticker, State10),
+                    {noreply, State}
+            end
+    end;
 handle_cast({remove_ticker, Ticker}, State0) ->
     State = case klsn_map:lookup([tickers, Ticker], State0) of
         none ->
@@ -154,6 +168,21 @@ handle_cast({set_last_updated_at, Timestamp}, State0) ->
     State = State0#{
         last_updated_at => Timestamp
     },
+    {noreply, State};
+
+%%--------------------------------------------------------------------
+%% Callback management for limit‑reached events
+%%--------------------------------------------------------------------
+
+handle_cast({add_on_limit_callback, Fun}, State0) when is_function(Fun, 2) ->
+    Callbacks0 = maps:get(on_limit, State0, []),
+    State = State0#{on_limit => [Fun | Callbacks0]},
+    {noreply, State};
+
+handle_cast({remove_on_limit_callback, Fun}, State0) when is_function(Fun, 2) ->
+    Callbacks0 = maps:get(on_limit, State0, []),
+    Callbacks = lists:filter(fun(F) -> F =/= Fun end, Callbacks0),
+    State = State0#{on_limit => Callbacks},
     {noreply, State}.
 
 
@@ -185,6 +214,18 @@ add(Ticker) ->
 -spec remove(ticker()) -> ok.
 remove(Ticker) ->
     gen_server:cast(?MODULE, {remove_ticker, Ticker}).
+
+%%--------------------------------------------------------------------
+%% Limit‑reached callback registration helpers
+%%--------------------------------------------------------------------
+
+-spec add_on_limit_callback(fun((ticker(), [ticker()]) -> any())) -> ok.
+add_on_limit_callback(Fun) when is_function(Fun, 2) ->
+    gen_server:cast(?MODULE, {add_on_limit_callback, Fun}).
+
+-spec remove_on_limit_callback(fun((ticker(), [ticker()]) -> any())) -> ok.
+remove_on_limit_callback(Fun) when is_function(Fun, 2) ->
+    gen_server:cast(?MODULE, {remove_on_limit_callback, Fun}).
 
 -spec last_updated_at() -> klsn:maybe(klsn_flux:timestamp()).
 last_updated_at() ->
