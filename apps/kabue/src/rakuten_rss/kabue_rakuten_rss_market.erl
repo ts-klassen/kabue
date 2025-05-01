@@ -273,12 +273,6 @@ parse_jpx_market_info(_Column, _Row, Value, Key) ->
 cell(Column, Row) ->
     %% Convert a positive integer column number (1-based) into the
     %% corresponding Excel-style column name (A, B, …, Z, AA, AB, …).
-    %%
-    %% The previous implementation appended the next letter to the tail of
-    %% the accumulator which resulted in the column name being reversed for
-    %% numbers larger than 26 (e.g. 28 → "BA").  We now build a list of
-    %% letters and finally reverse it once, ensuring correct ordering while
-    %% keeping the algorithm tail-recursive.
     ConvertCol = fun Convert(0, Acc) -> Acc;
                        Convert(Col, Acc) ->
                            Col0 = Col - 1,
@@ -287,8 +281,8 @@ cell(Column, Row) ->
                            NewCol = Col0 div 26,
                            Convert(NewCol, [Letter | Acc])
                 end,
-    LettersReversed = ConvertCol(Column, []),
-    ColumnName = list_to_binary(lists:reverse(LettersReversed)),
+    Letters = ConvertCol(Column, []),
+    ColumnName = list_to_binary(Letters),
     iolist_to_binary([ColumnName, integer_to_binary(Row)]).
 
 
