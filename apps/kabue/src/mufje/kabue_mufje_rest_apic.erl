@@ -474,7 +474,7 @@ request_(Request=#{method:=Method, uri:=Uri}, Options) ->
 %%  CancelOrder endpoint
 %% ------------------------------------------------------------------
 
--spec cancelorder(payload(), options()) -> either(payload()).
+-spec cancelorder(#{}, options()) -> either(payload()).
 cancelorder(ReqPayload, Options) when is_map(ReqPayload) ->
     request(#{
         uri => <<"/kabusapi/cancelorder">>
