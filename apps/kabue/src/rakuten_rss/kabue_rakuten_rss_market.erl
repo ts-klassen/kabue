@@ -101,9 +101,12 @@ handle_call({webhook, Body}, _From, State0) ->
         0 ->
             State10;
         _ ->
-            lists:foreach(fun(OnUpdate) ->
-                spawn(fun() -> OnUpdate(State10) end)
-            end, maps:get(on_update, State10)),
+            %% Execute on_update callbacks within the same process.  They are
+            %% lightweight (stateless writes to InfluxDB) and running them
+            %% sequentially avoids spawning an unbounded number of short-lived
+            %% processes.
+            lists:foreach(fun(OnUpdate) -> OnUpdate(State10) end,
+                          maps:get(on_update, State10)),
             State10
     end,
     {reply, jsone:encode(UpdateSheet#{<<"A1">> => A1}), State30};
