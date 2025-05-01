@@ -271,19 +271,18 @@ parse_jpx_market_info(_Column, _Row, Value, Key) ->
 
 -spec cell(non_neg_integer(), row_number()) -> klsn:binstr().
 cell(Column, Row) ->
-    ConvertCol = fun Convert(Col, Acc) ->
-        case Col of
-            0 -> 
-                Acc;
-            _ ->
-                Col0 = Col - 1,
-                Remainder = Col0 rem 26,
-                Letter = $A + Remainder,
-                NewCol = Col0 div 26,
-                Convert(NewCol, <<Acc/binary, Letter>>)
-        end     
-    end,
-    ColumnName = ConvertCol(Column, <<>>),
+    %% Convert a positive integer column number (1-based) into the
+    %% corresponding Excel-style column name (A, B, …, Z, AA, AB, …).
+    ConvertCol = fun Convert(0, Acc) -> Acc;
+                       Convert(Col, Acc) ->
+                           Col0 = Col - 1,
+                           Remainder = Col0 rem 26,
+                           Letter = $A + Remainder,
+                           NewCol = Col0 div 26,
+                           Convert(NewCol, [Letter | Acc])
+                end,
+    Letters = ConvertCol(Column, []),
+    ColumnName = list_to_binary(Letters),
     iolist_to_binary([ColumnName, integer_to_binary(Row)]).
 
 
