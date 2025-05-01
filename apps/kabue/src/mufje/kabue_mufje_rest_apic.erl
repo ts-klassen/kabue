@@ -19,6 +19,9 @@
       , register/2
       , unregister/2
       , unregister_all/1
+      , board/2
+      , symbol/2
+      , exchange/1
     ]).
 
 
@@ -266,6 +269,53 @@ parse_regist_list(Payload) ->
                     }
             end, RegistList),
             {right, Res};
+        {left, Left} ->
+            {left, Left}
+    end.
+
+
+%% ------------------------------------------------------------------
+%%  Board & Symbol & Exchange endpoints
+%% ------------------------------------------------------------------
+
+-spec board(ticker(), options()) -> either(kabue_mufje_types:board()).
+board(#{symbol := SymbolBin, exchange := ExchangeAtom}, Options) ->
+    ExchangeCode = maps:get(ExchangeAtom, kabue_mufje_enum:exchange()),
+    Uri = iolist_to_binary([
+        "/kabusapi/board/",
+        SymbolBin,
+        "@",
+        klsn_binstr:from_any(ExchangeCode)
+    ]),
+    request_to_board(Uri, Options).
+
+
+-spec symbol(ticker(), options()) -> either(payload()).
+symbol(#{symbol := SymbolBin, exchange := ExchangeAtom}, Options) ->
+    ExchangeCode = maps:get(ExchangeAtom, kabue_mufje_enum:exchange()),
+    Uri = iolist_to_binary([
+        "/kabusapi/symbol/",
+        SymbolBin,
+        "@",
+        klsn_binstr:from_any(ExchangeCode)
+    ]),
+    request(#{uri => Uri, method => get}, Options).
+
+
+-spec exchange(options()) -> either(payload()).
+exchange(Options) ->
+    request(#{uri => <<"/kabusapi/exchange">>, method => get}, Options).
+
+
+%% ------------------------------------------------------------------
+%%  Internal helpers
+%% ------------------------------------------------------------------
+
+-spec request_to_board(klsn:binstr(), options()) -> either(kabue_mufje_types:board()).
+request_to_board(Uri, Options) ->
+    case request(#{uri => Uri, method => get}, Options) of
+        {right, Payload} ->
+            {right, kabue_mufje_types:payload_to_board(Payload)};
         {left, Left} ->
             {left, Left}
     end.
