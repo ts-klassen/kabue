@@ -208,7 +208,7 @@ order(ReqPayload0, Options) ->
 %%  SendOrder (Option) endpoint
 %% ------------------------------------------------------------------
 
--spec sendorder_option(payload(), options()) -> either(payload()).
+-spec sendorder_option(#{}, options()) -> either(payload()).
 sendorder_option(ReqPayload, Options) when is_map(ReqPayload) ->
     request(#{
         uri => <<"/kabusapi/sendorder/option">>
