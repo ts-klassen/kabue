@@ -19,6 +19,8 @@
       , register/2
       , unregister/2
       , unregister_all/1
+      , wallet_option/1
+      , wallet_option/2
     ]).
 
 
@@ -467,5 +469,27 @@ request_(Request=#{method:=Method, uri:=Uri}, Options) ->
     end.
 
 % lists:map(fun(#{<<"Symbol">>:=Ticker})-> kabue_rakuten_rss_market:add(Ticker) end, maps:get(<<"Ranking">>, element(2, kabue_mufje_rest_apic:ranking(trading_volume_top, #{})))).
+
+
+%% ------------------------------------------------------------------
+%%  Wallet Option endpoints
+%% ------------------------------------------------------------------
+
+-spec wallet_option(options()) -> either(payload()).
+wallet_option(Options) ->
+    request(#{uri => <<"/kabusapi/wallet/option">>, method => get}, Options).
+
+
+-spec wallet_option(ticker(), options()) -> either(payload()).
+wallet_option(#{symbol := SymbolBin, exchange := ExchangeAtom}, Options) ->
+    ExchangeCode = maps:get(ExchangeAtom, kabue_mufje_enum:exchange()),
+    Path = iolist_to_binary([
+        "/kabusapi/wallet/option/",
+        SymbolBin,
+        "@",
+        klsn_binstr:from_any(ExchangeCode)
+    ]),
+    request(#{uri => Path, method => get}, Options).
+
 
 
