@@ -51,6 +51,48 @@
 | `POST` | `/sendorder/option` | 注文発注（オプション） |
 | `PUT`  | `/cancelorder` | 注文取消 |
 
+### 発注エンドポイント詳細
+
+#### POST `/sendorder/future`
+
+リクエストボディ（JSON）
+
+| キー | 型 | 必須 | 説明 |
+|------|----|------|------|
+| `Symbol` | string | ✓ | 銘柄コード |
+| `Exchange` | int | ✓ | 市場コード（2:日通し 23:日中 24:夜間 32〜34:SOR） |
+| `TradeType` | int | ✓ | 取引区分（1:新規 2:返済 10:決済付替 13:決済） |
+| `TimeInForce` | int | ✓ | 執行条件（1:FAK, 2:FAS, 3:FAK指値, 4:FAS指値） |
+| `Side` | string | ✓ | 1:売, 2:買 |
+| `Qty` | int | ✓ | 発注数量 |
+| `Price` | int | ✓ | 注文価格（成行時は 0） |
+| `ExpireDay` | int | ✓ | 執行期限（日付 YYYYMMDD, 当日:0） |
+| `FrontOrderType` | int | ✓ | 注文種別（10:成行 20:指値 30:STOP成行 etc.） |
+| `ReverseLimitOrder` | object |  | 逆指値注文パラメータ（`TriggerSec`, `TriggerPrice`, `UnderOver`, `AfterHitOrderType`, `AfterHitPrice`） |
+
+レスポンス: `OrderSuccess` スキーマ  
+`{ "OrderId": "***", "Result": 0 }`
+
+---
+
+#### POST `/sendorder/option`
+
+リクエストボディは `/sendorder/future` と同一構造（`RequestSendOrderDerivOption` スキーマ）です。
+
+違いは `Symbol` にオプション銘柄コードを指定する点のみ。
+
+---
+
+#### PUT `/cancelorder`
+
+リクエストボディ（JSON）
+
+| キー | 型 | 必須 | 説明 |
+|------|----|------|------|
+| `OrderId` | string | ✓ | 取消したい注文番号（`sendorder` 系レスポンスで取得） |
+
+成功レスポンス: `{ "Result": 0 }`
+
 ### 取引余力 (wallet)
 
 | Method | Path | Summary |
