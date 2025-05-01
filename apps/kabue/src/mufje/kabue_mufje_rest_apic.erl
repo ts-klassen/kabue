@@ -19,6 +19,7 @@
       , register/2
       , unregister/2
       , unregister_all/1
+      , symbol/2
     ]).
 
 
@@ -201,6 +202,22 @@ order(ReqPayload0, Options) ->
         {left, Left} ->
             {left, Left}
     end.
+
+
+%% ------------------------------------------------------------------
+%%  Symbol information
+%% ------------------------------------------------------------------
+
+-spec symbol(ticker(), options()) -> either(payload()).
+symbol(#{symbol := SymbolBin, exchange := ExchangeAtom}, Options) ->
+    ExchangeCode = maps:get(ExchangeAtom, kabue_mufje_enum:exchange()),
+    Uri = iolist_to_binary([
+        "/kabusapi/symbol/",
+        SymbolBin,
+        "@",
+        klsn_binstr:from_any(ExchangeCode)
+    ]),
+    request(#{uri => Uri, method => get}, Options).
 
 
 -spec register(
