@@ -9,7 +9,6 @@
       , symbol/0
       , order_id/0
       , ticker/0
-  , board/0
     ]).
 
 -export([
@@ -20,7 +19,7 @@
       , register/2
       , unregister/2
       , unregister_all/1
-  , board/2
+      , board/2
     ]).
 
 
@@ -65,7 +64,6 @@
       , exchange => kabue_mufje_enum:exchange()
     }.
 
--type board() :: kabue_mufje_types:board().
 
 
 -spec ranking(
@@ -279,7 +277,7 @@ parse_regist_list(Payload) ->
 %%  Board information
 %% ------------------------------------------------------------------
 
--spec board(ticker(), options()) -> either(board()).
+-spec board(ticker(), options()) -> either(kabue_mufje_types:board()).
 board(#{symbol := SymbolBin, exchange := ExchangeAtom}, Options) ->
     ExchangeCode = maps:get(ExchangeAtom, kabue_mufje_enum:exchange()),
     Uri = iolist_to_binary([
