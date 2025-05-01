@@ -19,6 +19,7 @@
       , register/2
       , unregister/2
       , unregister_all/1
+      , exchange/1
     ]).
 
 
@@ -201,6 +202,15 @@ order(ReqPayload0, Options) ->
         {left, Left} ->
             {left, Left}
     end.
+
+
+%% ------------------------------------------------------------------
+%%  Exchange information
+%% ------------------------------------------------------------------
+
+-spec exchange(options()) -> either(payload()).
+exchange(Options) ->
+    request(#{uri => <<"/kabusapi/exchange">>, method => get}, Options).
 
 
 -spec register(
