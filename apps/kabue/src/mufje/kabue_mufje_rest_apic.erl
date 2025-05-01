@@ -19,6 +19,8 @@
       , register/2
       , unregister/2
       , unregister_all/1
+      , wallet_cash/1
+      , wallet_cash/2
     ]).
 
 
@@ -201,6 +203,27 @@ order(ReqPayload0, Options) ->
         {left, Left} ->
             {left, Left}
     end.
+
+
+%% ------------------------------------------------------------------
+%%  Wallet Cash endpoints
+%% ------------------------------------------------------------------
+
+-spec wallet_cash(options()) -> either(payload()).
+wallet_cash(Options) ->
+    request(#{uri => <<"/kabusapi/wallet/cash">>, method => get}, Options).
+
+
+-spec wallet_cash(ticker(), options()) -> either(payload()).
+wallet_cash(#{symbol := SymbolBin, exchange := ExchangeAtom}, Options) ->
+    ExchangeCode = maps:get(ExchangeAtom, kabue_mufje_enum:exchange()),
+    Path = iolist_to_binary([
+        "/kabusapi/wallet/cash/",
+        SymbolBin,
+        "@",
+        klsn_binstr:from_any(ExchangeCode)
+    ]),
+    request(#{uri => Path, method => get}, Options).
 
 
 -spec register(
