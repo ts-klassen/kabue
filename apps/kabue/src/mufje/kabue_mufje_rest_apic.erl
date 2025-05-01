@@ -19,6 +19,7 @@
       , register/2
       , unregister/2
       , unregister_all/1
+      , order_detail/2
     ]).
 
 
@@ -467,5 +468,19 @@ request_(Request=#{method:=Method, uri:=Uri}, Options) ->
     end.
 
 % lists:map(fun(#{<<"Symbol">>:=Ticker})-> kabue_rakuten_rss_market:add(Ticker) end, maps:get(<<"Ranking">>, element(2, kabue_mufje_rest_apic:ranking(trading_volume_top, #{})))).
+
+
+%% ------------------------------------------------------------------
+%%  Order detail endpoint
+%% ------------------------------------------------------------------
+
+-spec order_detail(order_id(), options()) -> either(payload()).
+order_detail(OrderIdBin, Options) ->
+    Path = iolist_to_binary([
+        "/kabusapi/orders/",
+        klsn_binstr:from_any(OrderIdBin)
+    ]),
+    request(#{uri => Path, method => get}, Options).
+
 
 
