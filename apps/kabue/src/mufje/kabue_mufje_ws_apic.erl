@@ -111,21 +111,18 @@ handle_info({gun_down, _Pid, Proto, Reason, [Ref]}, State0)
          (Reason =:= closed orelse Reason =:= normal) ->
     io:format("gun_down~n"),
     Mode = mode_from_ref(Ref, State0),
-    State10 = klsn_map:upsert([Mode, stream_ref], none, State0),
-    State20 = klsn_map:upsert([Mode, is_upgraded], false, State10),
-    {noreply, State20};
+    State10 = klsn_map:upsert([Mode, is_upgraded], false, State0),
+    {noreply, State10};
 handle_info({gun_ws, _Pid, Ref, close}, State0) ->
     io:format("gun_ws close~n"),
     Mode = mode_from_ref(Ref, State0),
-    State10 = klsn_map:upsert([Mode, stream_ref], none, State0),
-    State20 = klsn_map:upsert([Mode, is_upgraded], false, State10),
-    {noreply, State20};
+    State10 = klsn_map:upsert([Mode, is_upgraded], false, State0),
+    {noreply, State10};
 handle_info({gun_error, _Pid, Ref, closed}, State0) ->
     io:format("gun_error closed~n"),
     Mode = mode_from_ref(Ref, State0),
-    State10 = klsn_map:upsert([Mode, stream_ref], none, State0),
-    State20 = klsn_map:upsert([Mode, is_upgraded], false, State10),
-    {noreply, State20};
+    State10 = klsn_map:upsert([Mode, is_upgraded], false, State0),
+    {noreply, State10};
 handle_info({gun_up, Pid, http}, State0) ->
     io:format("gun_up~n"),
     Timestamp = klsn_flux:timestamp(),
