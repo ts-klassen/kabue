@@ -208,7 +208,27 @@ order(ReqPayload0, Options) ->
 %%  SendOrder (Option) endpoint
 %% ------------------------------------------------------------------
 
--spec sendorder_option(#{}, options()) -> either(payload()).
+-spec sendorder_option(
+        #{
+            symbol := symbol()
+          , exchange := kabue_mufje_enum:exchange()
+          , trade_type := integer()
+          , time_in_force := integer()
+          , side := kabue_mufje_enum:side()
+          , qty := integer()
+          , price := integer()
+          , expire_day := integer()
+          , front_order_type := kabue_mufje_enum:front_order_type()
+          , reverse_limit_order => #{
+                trigger_sec := kabue_mufje_enum:trigger_sec()
+              , trigger_price := float()
+              , under_over := kabue_mufje_enum:under_over()
+              , after_hit_order_type := kabue_mufje_enum:after_hit_order_type()
+              , after_hit_price := float()
+            }
+        }
+      , options()
+    ) -> either(payload()).
 sendorder_option(ReqPayload, Options) when is_map(ReqPayload) ->
     request(#{
         uri => <<"/kabusapi/sendorder/option">>
