@@ -19,6 +19,7 @@
       , register/2
       , unregister/2
       , unregister_all/1
+      , position_list/1
     ]).
 
 
@@ -467,5 +468,15 @@ request_(Request=#{method:=Method, uri:=Uri}, Options) ->
     end.
 
 % lists:map(fun(#{<<"Symbol">>:=Ticker})-> kabue_rakuten_rss_market:add(Ticker) end, maps:get(<<"Ranking">>, element(2, kabue_mufje_rest_apic:ranking(trading_volume_top, #{})))).
+
+
+%% ------------------------------------------------------------------
+%%  Position list endpoint
+%% ------------------------------------------------------------------
+
+-spec position_list(options()) -> either(payload()).
+position_list(Options) ->
+    request(#{uri => <<"/kabusapi/positions">>, method => get}, Options).
+
 
 
