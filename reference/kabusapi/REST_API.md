@@ -157,6 +157,75 @@
 | `GET` | `/wallet/option` | 取引余力（オプション） |
 | `GET` | `/wallet/option/{symbol}` | 取引余力（オプション）（銘柄指定） |
 
+#### 共通
+
+これらの取引余力 API は **リクエストボディを持ちません**。  
+ヘッダー `X-API-KEY` のみ必須です。
+
+| パス変数 | 説明 |
+|-----------|------|
+| `symbol`  | 銘柄コード@市場コード (`6502@1` など) |
+
+成功レスポンスはそれぞれ `Wallet*Success` スキーマを参照してください。
+
+---
+
+### 情報エンドポイント詳細
+
+#### GET `/board/{symbol}`
+
+| パス変数 | 説明 | 必須 |
+|-----------|------|------|
+| `symbol` | 銘柄コード@市場コード | ✓ |
+
+レスポンス: `BoardSuccess` – 板情報 + 時価情報。
+
+---
+
+#### GET `/symbol/{symbol}`
+
+現物銘柄情報を取得。パス変数は同上。レスポンス `SymbolSuccess`。
+
+#### GET `/symbol/{symbol}/future` / `/symbol/{symbol}/option`
+
+先物・オプション銘柄情報。パス変数同上。レスポンス `SymbolFutureSuccess` / `SymbolOptionSuccess`。
+
+---
+
+#### GET `/exchange`
+
+リクエストパラメータなし。取引所営業日/時間帯情報を返す (`ExchangeSuccess`)。
+
+---
+
+### 注文・建玉照会
+
+#### GET `/orders`
+
+クエリ
+
+| Name | Type | 説明 |
+|------|------|------|
+| `product` | string | 0:すべて / 1:現物 / 2:信用 / 3:先物 / 4:OP |
+
+レスポンス `OrdersSuccess` – `Orders` 配列。
+
+#### GET `/orders/{id}`
+
+詳細取得。`id` は `OrderId` 文字列。レスポンス `OrderDetailSuccess`。
+
+---
+
+#### GET `/positions`
+
+クエリ
+
+| Name | Type | 説明 |
+|------|------|------|
+| `product` | string | 0:すべて / 1:現物 / 2:信用 / 3:先物 / 4:OP |
+
+レスポンス `PositionsSuccess` – `Positions` 配列。
+
 ### 情報 (info)
 
 | Method | Path | Summary |
