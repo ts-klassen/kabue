@@ -479,11 +479,12 @@ request_(Request=#{method:=Method, uri:=Uri}, Options) ->
             order_id := order_id()
         }
       , options()) -> either(payload()).
-cancelorder(ReqPayload, Options) when is_map(ReqPayload) ->
+cancelorder(#{order_id := OrderId}, Options) ->
+    Payload = #{ <<"OrderId">> => OrderId },
     request(#{
         uri => <<"/kabusapi/cancelorder">>
       , method => put
-      , payload => ReqPayload
+      , payload => Payload
     }, Options).
 
 
