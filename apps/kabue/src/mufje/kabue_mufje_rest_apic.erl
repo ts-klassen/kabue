@@ -450,13 +450,13 @@ request_(Request=#{method:=Method, uri:=Uri}, Options) ->
                 }
             of
                 {{value, CodeMsg}, {value, Message}, {value, true}} ->
-                    error_logger:info_msg("~p:~p/~p error: ~p~n~ts~n~p~n", [
-                        ?MODULE
-                      , ?FUNCTION_NAME
-                      , ?FUNCTION_ARITY
-                      , CodeMsg
-                      , Message
-                      , Request
+                    logger:warning("~p:~p/~p error: ~p~n~ts~n~p", [
+                        ?MODULE,
+                        ?FUNCTION_NAME,
+                        ?FUNCTION_ARITY,
+                        CodeMsg,
+                        Message,
+                        Request
                     ]);
                 _ ->
                     ok

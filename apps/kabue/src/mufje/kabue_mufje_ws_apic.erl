@@ -156,14 +156,9 @@ handle_info({gun_ws, _Pid, Ref, {text, Text}}, State0) ->
     io:format("~p~n", [State60]),
     {noreply, State60};
 handle_info(Info, State) ->
-    error_logger:info_msg("function=~p:~p/~p, line=~p~ninfo=~p~nstate=~p", [
-            ?MODULE
-          , ?FUNCTION_NAME
-          , ?FUNCTION_ARITY
-          , ?LINE
-          , Info
-          , klsn_map:upsert([real, data], 'OMMIT', State)
-        ]),
+    logger:info("~p:~p/~p: line=~p info=~p state=~p", [
+        ?MODULE, ?FUNCTION_NAME, ?FUNCTION_ARITY, ?LINE, Info,
+        klsn_map:upsert([real, data], 'OMMIT', State)]),
     {noreply, State}.
 
 terminate(_reason, _State) ->

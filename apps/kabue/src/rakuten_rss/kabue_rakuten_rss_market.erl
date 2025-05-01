@@ -158,13 +158,8 @@ handle_cast({set_last_updated_at, Timestamp}, State0) ->
 
 
 handle_info(Info, State) ->
-    error_logger:info_msg("function=~p:~p/~p, line=~p~ninfo=~p", [
-            ?MODULE
-          , ?FUNCTION_NAME
-          , ?FUNCTION_ARITY
-          , ?LINE
-          , Info
-        ]),
+    logger:info("~p:~p/~p: line=~p info=~p", [
+        ?MODULE, ?FUNCTION_NAME, ?FUNCTION_ARITY, ?LINE, Info]),
     {noreply, State}.
 
 terminate(_reason, _State) ->
