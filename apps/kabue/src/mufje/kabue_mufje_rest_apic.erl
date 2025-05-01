@@ -19,6 +19,7 @@
       , register/2
       , unregister/2
       , unregister_all/1
+      , sendorder_future/2
     ]).
 
 
@@ -201,6 +202,19 @@ order(ReqPayload0, Options) ->
         {left, Left} ->
             {left, Left}
     end.
+
+
+%% ------------------------------------------------------------------
+%%  SendOrder (Future) endpoint
+%% ------------------------------------------------------------------
+
+-spec sendorder_future(payload(), options()) -> either(payload()).
+sendorder_future(ReqPayload, Options) when is_map(ReqPayload) ->
+    request(#{
+        uri => <<"/kabusapi/sendorder/future">>
+      , method => post
+      , payload => ReqPayload
+    }, Options).
 
 
 -spec register(
