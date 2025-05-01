@@ -19,6 +19,8 @@
       , register/2
       , unregister/2
       , unregister_all/1
+      , symbol_future/2
+      , symbol_option/2
     ]).
 
 
@@ -467,5 +469,31 @@ request_(Request=#{method:=Method, uri:=Uri}, Options) ->
     end.
 
 % lists:map(fun(#{<<"Symbol">>:=Ticker})-> kabue_rakuten_rss_market:add(Ticker) end, maps:get(<<"Ranking">>, element(2, kabue_mufje_rest_apic:ranking(trading_volume_top, #{})))).
+
+
+%% ------------------------------------------------------------------
+%%  Symbol Future & Symbol Option endpoints
+%% ------------------------------------------------------------------
+
+-spec symbol_future(ticker(), options()) -> either(payload()).
+symbol_future(#{symbol := SymbolBin, exchange := ExchangeAtom}, Options) ->
+    _ExchangeCode = maps:get(ExchangeAtom, kabue_mufje_enum:exchange()),
+    Uri = iolist_to_binary([
+        "/kabusapi/symbol/",
+        SymbolBin,
+        "/future"
+    ]),
+    request(#{uri => Uri, method => get}, Options).
+
+
+-spec symbol_option(ticker(), options()) -> either(payload()).
+symbol_option(#{symbol := SymbolBin, exchange := ExchangeAtom}, Options) ->
+    _ExchangeCode = maps:get(ExchangeAtom, kabue_mufje_enum:exchange()),
+    Uri = iolist_to_binary([
+        "/kabusapi/symbol/",
+        SymbolBin,
+        "/option"
+    ]),
+    request(#{uri => Uri, method => get}, Options).
 
 
