@@ -229,11 +229,32 @@ order(ReqPayload0, Options) ->
         }
       , options()
     ) -> either(payload()).
-sendorder_future(ReqPayload, Options) when is_map(ReqPayload) ->
+sendorder_future(ReqPayload0, Options) when is_map(ReqPayload0) ->
+    Payload = maps:from_list(lists:filtermap(fun
+        ({symbol, Symbol}) -> {true, {<<"Symbol">>, Symbol}};
+        ({exchange, Exchange}) -> {true, {<<"Exchange">>, maps:get(Exchange, kabue_mufje_enum:exchange())}};
+        ({trade_type, Val}) -> {true, {<<"TradeType">>, Val}};
+        ({time_in_force, Val}) -> {true, {<<"TimeInForce">>, Val}};
+        ({side, Side}) -> {true, {<<"Side">>, maps:get(Side, kabue_mufje_enum:side())}};
+        ({qty, Qty}) -> {true, {<<"Qty">>, Qty}};
+        ({price, Price}) -> {true, {<<"Price">>, Price}};
+        ({expire_day, Day}) -> {true, {<<"ExpireDay">>, Day}};
+        ({front_order_type, Type}) -> {true, {<<"FrontOrderType">>, maps:get(Type, kabue_mufje_enum:front_order_type())}};
+        ({reverse_limit_order, RLO}) ->
+            Map = #{
+                <<"TriggerSec">> => maps:get(maps:get(trigger_sec, RLO), kabue_mufje_enum:trigger_sec())
+              , <<"TriggerPrice">> => maps:get(trigger_price, RLO)
+              , <<"UnderOver">> => maps:get(maps:get(under_over, RLO), kabue_mufje_enum:under_over())
+              , <<"AfterHitOrderType">> => maps:get(maps:get(after_hit_order_type, RLO), kabue_mufje_enum:after_hit_order_type())
+              , <<"AfterHitPrice">> => maps:get(after_hit_price, RLO)
+            },
+            {true, {<<"ReverseLimitOrder">>, Map}};
+        (_) -> false
+    end, maps:to_list(ReqPayload0))),
     request(#{
         uri => <<"/kabusapi/sendorder/future">>
       , method => post
-      , payload => ReqPayload
+      , payload => Payload
     }, Options).
 
 
