@@ -19,6 +19,10 @@
       , register/2
       , unregister/2
       , unregister_all/1
+      , wallet_future/1
+      , wallet_future/2
+      , wallet_margin/1
+      , wallet_margin/2
     ]).
 
 
@@ -467,5 +471,47 @@ request_(Request=#{method:=Method, uri:=Uri}, Options) ->
     end.
 
 % lists:map(fun(#{<<"Symbol">>:=Ticker})-> kabue_rakuten_rss_market:add(Ticker) end, maps:get(<<"Ranking">>, element(2, kabue_mufje_rest_apic:ranking(trading_volume_top, #{})))).
+
+
+%% ------------------------------------------------------------------
+%%  Wallet Future endpoints
+%% ------------------------------------------------------------------
+
+-spec wallet_future(options()) -> either(payload()).
+wallet_future(Options) ->
+    request(#{uri => <<"/kabusapi/wallet/future">>, method => get}, Options).
+
+
+-spec wallet_future(ticker(), options()) -> either(payload()).
+wallet_future(#{symbol := SymbolBin, exchange := ExchangeAtom}, Options) ->
+    ExchangeCode = maps:get(ExchangeAtom, kabue_mufje_enum:exchange()),
+    Path = iolist_to_binary([
+        "/kabusapi/wallet/future/",
+        SymbolBin,
+        "@",
+        klsn_binstr:from_any(ExchangeCode)
+    ]),
+    request(#{uri => Path, method => get}, Options).
+
+
+%% ------------------------------------------------------------------
+%%  Wallet Margin endpoints
+%% ------------------------------------------------------------------
+
+-spec wallet_margin(options()) -> either(payload()).
+wallet_margin(Options) ->
+    request(#{uri => <<"/kabusapi/wallet/margin">>, method => get}, Options).
+
+
+-spec wallet_margin(ticker(), options()) -> either(payload()).
+wallet_margin(#{symbol := SymbolBin, exchange := ExchangeAtom}, Options) ->
+    ExchangeCode = maps:get(ExchangeAtom, kabue_mufje_enum:exchange()),
+    Path = iolist_to_binary([
+        "/kabusapi/wallet/margin/",
+        SymbolBin,
+        "@",
+        klsn_binstr:from_any(ExchangeCode)
+    ]),
+    request(#{uri => Path, method => get}, Options).
 
 
