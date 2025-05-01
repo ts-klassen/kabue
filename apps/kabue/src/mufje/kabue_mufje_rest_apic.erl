@@ -19,6 +19,7 @@
       , register/2
       , unregister/2
       , unregister_all/1
+      , order_list/2
     ]).
 
 
@@ -467,5 +468,22 @@ request_(Request=#{method:=Method, uri:=Uri}, Options) ->
     end.
 
 % lists:map(fun(#{<<"Symbol">>:=Ticker})-> kabue_rakuten_rss_market:add(Ticker) end, maps:get(<<"Ranking">>, element(2, kabue_mufje_rest_apic:ranking(trading_volume_top, #{})))).
+
+
+%% ------------------------------------------------------------------
+%%  Order list endpoint
+%% ------------------------------------------------------------------
+
+-spec order_list(
+        #{ product => kabue_mufje_enum:product() }
+      , options()) -> either(payload()).
+order_list(Query0, Options) when is_map(Query0) ->
+    Q = maps:from_list(lists:filtermap(fun
+        ({product, Product}) ->
+            {true, {<<"product">>, maps:get(Product, kabue_mufje_enum:product())}};
+        (_) -> false
+    end, maps:to_list(Query0))),
+    request(#{uri => <<"/kabusapi/orders">>, method => get, q => Q}, Options).
+
 
 
