@@ -660,6 +660,22 @@ request_(Request=#{method:=Method, uri:=Uri}, Options) ->
 
 
 %% ------------------------------------------------------------------
+%%  Order list endpoint
+%% ------------------------------------------------------------------
+
+-spec order_list(
+        #{ product => kabue_mufje_enum:product() }
+      , options()) -> either(payload()).
+order_list(Query0, Options) when is_map(Query0) ->
+    Q = maps:from_list(lists:filtermap(fun
+        ({product, Product}) ->
+            {true, {<<"product">>, maps:get(Product, kabue_mufje_enum:product())}};
+        (_) -> false
+    end, maps:to_list(Query0))),
+    request(#{uri => <<"/kabusapi/orders">>, method => get, q => Q}, Options).
+
+
+%% ------------------------------------------------------------------
 %%  Symbol Future & Symbol Option endpoints
 %% ------------------------------------------------------------------
 
