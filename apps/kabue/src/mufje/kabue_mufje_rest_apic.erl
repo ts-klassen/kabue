@@ -230,7 +230,7 @@ order(ReqPayload0, Options) ->
           , exchange => kabue_mufje_enum:exchange()
         }]
       , options()
-    ) -> either(ticker()).
+    ) -> either([ticker()]).
 register(ReqPayload0, Options) ->
     Symbols = lists:map(fun(Elem) ->
         #{
@@ -266,7 +266,7 @@ unregister(ReqPayload0, Options) ->
     } , Options)).
 
 
--spec unregister_all(options()) -> either(ticker()).
+-spec unregister_all(options()) -> either([ticker()]).
 unregister_all(Options) ->
     parse_regist_list(request(#{
         uri => <<"/kabusapi/unregister/all">>
