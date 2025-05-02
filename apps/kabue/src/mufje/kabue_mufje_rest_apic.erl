@@ -107,7 +107,117 @@
 
 
 
--type ranking_result() :: [map()]. % TODO
+% Variant for 株価情報 (Type 1-4)
+-type ranking_price_entry() :: #{
+        no := non_neg_integer()
+      , trend := 0..5
+      , average_ranking := float()
+      , symbol := klsn:binstr()
+      , symbol_name := klsn:binstr()
+      , current_price := float()
+      , change_ratio := float()
+      , change_percentage := float()
+      , current_price_time := klsn:binstr()
+      , trading_volume := float()
+      , turnover := float()
+      , exchange_name := klsn:binstr()
+      , category_name := klsn:binstr()
+    }.
+
+% Variant for TICK回数 (Type 5)
+-type ranking_tick_entry() :: #{
+        no := non_neg_integer()
+      , trend := 0..5
+      , average_ranking := float()
+      , symbol := klsn:binstr()
+      , symbol_name := klsn:binstr()
+      , current_price := float()
+      , change_ratio := float()
+      , change_percentage := float()
+      , tick_count := non_neg_integer()
+      , up_count := non_neg_integer()
+      , down_count := non_neg_integer()
+      , trading_volume := float()
+      , turnover := float()
+      , exchange_name := klsn:binstr()
+      , category_name := klsn:binstr()
+    }.
+
+
+% Variant for 売買高急増 (Type 6)
+-type ranking_trade_volume_entry() :: #{
+        no := non_neg_integer()
+      , trend := 0..5
+      , average_ranking := float()
+      , symbol := klsn:binstr()
+      , symbol_name := klsn:binstr()
+      , current_price := float()
+      , change_ratio := float()
+      , rapid_trade_percentage := float()
+      , trading_volume := float()
+      , current_price_time := klsn:binstr()
+      , change_percentage := float()
+      , exchange_name := klsn:binstr()
+      , category_name := klsn:binstr()
+    }.
+
+% Variant for 売買代金急増 (Type 7)
+-type ranking_trade_value_entry() :: #{
+        no := non_neg_integer()
+      , trend := 0..5
+      , average_ranking := float()
+      , symbol := klsn:binstr()
+      , symbol_name := klsn:binstr()
+      , current_price := float()
+      , change_ratio := float()
+      , rapid_payment_percentage := float()
+      , turnover := float()
+      , current_price_time := klsn:binstr()
+      , change_percentage := float()
+      , exchange_name := klsn:binstr()
+      , category_name := klsn:binstr()
+    }.
+
+% Variant for 信用情報 (Type 8-13)
+-type ranking_margin_entry() :: #{
+        no := non_neg_integer()
+      , symbol := klsn:binstr()
+      , symbol_name := klsn:binstr()
+      , sell_rapid_payment_percentage := float()
+      , sell_last_week_ratio := float()
+      , buy_rapid_payment_percentage := float()
+      , buy_last_week_ratio := float()
+      , ratio := float()
+      , exchange_name := klsn:binstr()
+      , category_name := klsn:binstr()
+    }.
+
+% Variant for 業種別指数 (Type 14-15)
+-type ranking_category_entry() :: #{
+        no := non_neg_integer()
+      , trend := 0..5
+      , average_ranking := float()
+      , category := klsn:binstr()
+      , category_name := klsn:binstr()
+      , current_price := float()
+      , change_ratio := float()
+      , current_price_time := klsn:binstr()
+      , change_percentage := float()
+    }.
+
+-type ranking_entry() ::
+        ranking_price_entry()
+      | ranking_tick_entry()
+      | ranking_trade_volume_entry()
+      | ranking_trade_value_entry()
+      | ranking_margin_entry()
+      | ranking_category_entry().
+
+-type ranking_result() :: #{
+        type := 1..15 | integer() % documented Type values
+      , exchange_division := klsn:binstr()
+      , ranking := [ranking_entry()]
+    }. % TODO: refine for other ranking categories
 % TODO
 -type symbol_info() :: map().
 -type exchange_info() :: map().
