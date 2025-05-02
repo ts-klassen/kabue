@@ -660,6 +660,17 @@ request_(Request=#{method:=Method, uri:=Uri}, Options) ->
 
 
 %% ------------------------------------------------------------------
+%%  Order detail endpoint
+%% ------------------------------------------------------------------
+
+-spec order_detail(order_id(), options()) -> either(payload()).
+order_detail(OrderIdBin, Options) ->
+    Path = iolist_to_binary([
+        "/kabusapi/orders/",
+        klsn_binstr:from_any(OrderIdBin)
+
+
+%% ------------------------------------------------------------------
 %%  Order list endpoint
 %% ------------------------------------------------------------------
 
