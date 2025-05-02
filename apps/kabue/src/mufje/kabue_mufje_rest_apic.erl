@@ -643,3 +643,21 @@ request_(Request=#{method:=Method, uri:=Uri}, Options) ->
 % lists:map(fun(#{<<"Symbol">>:=Ticker})-> kabue_rakuten_rss_market:add(Ticker) end, maps:get(<<"Ranking">>, element(2, kabue_mufje_rest_apic:ranking(trading_volume_top, #{})))).
 
 
+%% ------------------------------------------------------------------
+%%  CancelOrder endpoint
+%% ------------------------------------------------------------------
+
+-spec cancelorder(
+        #{
+            order_id := order_id()
+        }
+      , options()) -> either(payload()).
+cancelorder(#{order_id := OrderId}, Options) ->
+    Payload = #{ <<"OrderId">> => OrderId },
+    request(#{
+        uri => <<"/kabusapi/cancelorder">>
+      , method => put
+      , payload => Payload
+    }, Options).
+
+
