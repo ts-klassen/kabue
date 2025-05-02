@@ -9,6 +9,20 @@
       , symbol/0
       , order_id/0
       , ticker/0
+      % custom response types (do not directly expose payload())
+      , ranking_result/0
+      , symbol_info/0
+      , exchange_info/0
+      , sendorder_future_result/0
+      , sendorder_option_result/0
+      , cancelorder_result/0
+      , wallet_cash_result/0
+      , wallet_future_result/0
+      , wallet_margin_result/0
+      , wallet_option_result/0
+      , order_list_result/0
+      , order_detail_result/0
+      , position_list_result/0
     ]).
 
 
@@ -81,6 +95,39 @@
       , exchange => kabue_mufje_enum:exchange()
     }.
 
+%%--------------------------------------------------------------------
+%% Custom response types for each API endpoint.
+%% Currently they are defined as opaque maps.  They are intentionally
+%% kept distinct from the generic `payload()` type so that callers can
+%% use the more specific names in their specs and pattern matches while
+%% we incrementally introduce richer structures.
+%%--------------------------------------------------------------------
+
+
+
+
+
+-type ranking_result() :: [map()]. % TODO
+% TODO
+-type symbol_info() :: map().
+-type exchange_info() :: map().
+
+% TODO
+-type sendorder_future_result() :: map().
+-type sendorder_option_result() :: map().
+-type cancelorder_result() :: map().
+
+% TODO
+-type wallet_cash_result() :: map().
+-type wallet_future_result() :: map().
+-type wallet_margin_result() :: map().
+-type wallet_option_result() :: map().
+
+% TODO
+-type order_list_result() :: map().
+-type order_detail_result() :: map().
+-type position_list_result() :: map().
+
 
 
 -spec ranking(
@@ -89,7 +136,7 @@
           , exchange_division => kabue_mufje_enum:exchange_division()
         }
       , options()
-    ) -> ok.
+    ) -> either(ranking_result()).
 ranking(ReqPayload0, Options) ->
     ReqQuery= maps:from_list(lists:filtermap(fun
         ({type, Type}) ->
@@ -100,11 +147,21 @@ ranking(ReqPayload0, Options) ->
             {true, {<<"ExchangeDivision">>, maps:get(ExchangeDivision, Enum)}};
         (_) -> false
     end, maps:to_list(ReqPayload0))),
-    request(#{
+    Res = request(#{
         uri => <<"/kabusapi/ranking">>
       , method => get
       , q => ReqQuery
-    } , Options).
+    } , Options),
+    case Res of
+        {right, #{<<"Ranking">> := RankingList}} ->
+            % TODO: convert payload to ranking_result()
+            {right, RankingList};
+        {left, Left} ->
+            {left, Left}
+    end.
+
+
+
 
 
 -spec order(
@@ -307,7 +364,8 @@ board(#{symbol := SymbolBin, exchange := ExchangeAtom}, Options) ->
     end.
 
 
--spec symbol(ticker(), options()) -> either(payload()).
+-spec symbol(ticker(), options()) -> either(symbol_info()).
+% TODO: convert payload() to symbol_info()
 symbol(#{symbol := SymbolBin, exchange := ExchangeAtom}, Options) ->
     ExchangeCode = maps:get(ExchangeAtom, kabue_mufje_enum:exchange()),
     Uri = iolist_to_binary([
@@ -321,7 +379,8 @@ symbol(#{symbol := SymbolBin, exchange := ExchangeAtom}, Options) ->
 
 
 
--spec exchange(kabue_mufje_enum:symbol(), options()) -> either(payload()).
+-spec exchange(kabue_mufje_enum:symbol(), options()) -> either(exchange_info()).
+% TODO: convert payload() to exchange_info()
 exchange(SymbolAtom, Options) ->
     SymbolBin = maps:get(SymbolAtom, kabue_mufje_enum:symbol()),
     Uri = iolist_to_binary([<<"/kabusapi/exchange/">>, SymbolBin]),
@@ -348,7 +407,8 @@ exchange(SymbolAtom, Options) ->
             }
         }
       , options()
-    ) -> either(payload()).
+    ) -> either(sendorder_future_result()).
+% TODO: convert payload() to sendorder_future_result()
 sendorder_future(ReqPayload0, Options) when is_map(ReqPayload0) ->
     Payload = maps:from_list(lists:filtermap(fun
         ({symbol, Symbol}) -> {true, {<<"Symbol">>, Symbol}};
@@ -398,7 +458,8 @@ sendorder_future(ReqPayload0, Options) when is_map(ReqPayload0) ->
             }
         }
       , options()
-    ) -> either(payload()).
+    ) -> either(sendorder_option_result()).
+% TODO: convert payload() to sendorder_option_result()
 sendorder_option(ReqPayload0, Options) when is_map(ReqPayload0) ->
     Payload = maps:from_list(lists:filtermap(fun
         ({symbol, Symbol}) -> {true, {<<"Symbol">>, Symbol}};
@@ -432,7 +493,8 @@ sendorder_option(ReqPayload0, Options) when is_map(ReqPayload0) ->
         #{
             order_id := order_id()
         }
-      , options()) -> either(payload()).
+      , options()) -> either(cancelorder_result()).
+% TODO: convert payload() to cancelorder_result()
 cancelorder(#{order_id := OrderId}, Options) ->
     Payload = #{ <<"OrderId">> => OrderId },
     request(#{
@@ -442,12 +504,14 @@ cancelorder(#{order_id := OrderId}, Options) ->
     }, Options).
 
 
--spec wallet_cash(options()) -> either(payload()).
+-spec wallet_cash(options()) -> either(wallet_cash_result()).
+% TODO: convert payload() to wallet_cash_result()
 wallet_cash(Options) ->
     request(#{uri => <<"/kabusapi/wallet/cash">>, method => get}, Options).
 
 
--spec wallet_cash(ticker(), options()) -> either(payload()).
+-spec wallet_cash(ticker(), options()) -> either(wallet_cash_result()).
+% TODO: convert payload() to wallet_cash_result()
 wallet_cash(#{symbol := SymbolBin, exchange := ExchangeAtom}, Options) ->
     ExchangeCode = maps:get(ExchangeAtom, kabue_mufje_enum:exchange()),
     Path = iolist_to_binary([
@@ -459,12 +523,14 @@ wallet_cash(#{symbol := SymbolBin, exchange := ExchangeAtom}, Options) ->
     request(#{uri => Path, method => get}, Options).
 
 
--spec wallet_future(options()) -> either(payload()).
+-spec wallet_future(options()) -> either(wallet_future_result()).
+% TODO: convert payload() to wallet_future_result()
 wallet_future(Options) ->
     request(#{uri => <<"/kabusapi/wallet/future">>, method => get}, Options).
 
 
--spec wallet_future(ticker(), options()) -> either(payload()).
+-spec wallet_future(ticker(), options()) -> either(wallet_future_result()).
+% TODO: convert payload() to wallet_future_result()
 wallet_future(#{symbol := SymbolBin, exchange := ExchangeAtom}, Options) ->
     ExchangeCode = maps:get(ExchangeAtom, kabue_mufje_enum:exchange()),
     Path = iolist_to_binary([
@@ -476,12 +542,14 @@ wallet_future(#{symbol := SymbolBin, exchange := ExchangeAtom}, Options) ->
     request(#{uri => Path, method => get}, Options).
 
 
--spec wallet_margin(options()) -> either(payload()).
+-spec wallet_margin(options()) -> either(wallet_margin_result()).
+% TODO: convert payload() to wallet_margin_result()
 wallet_margin(Options) ->
     request(#{uri => <<"/kabusapi/wallet/margin">>, method => get}, Options).
 
 
--spec wallet_margin(ticker(), options()) -> either(payload()).
+-spec wallet_margin(ticker(), options()) -> either(wallet_margin_result()).
+% TODO: convert payload() to wallet_margin_result()
 wallet_margin(#{symbol := SymbolBin, exchange := ExchangeAtom}, Options) ->
     ExchangeCode = maps:get(ExchangeAtom, kabue_mufje_enum:exchange()),
     Path = iolist_to_binary([
@@ -493,12 +561,14 @@ wallet_margin(#{symbol := SymbolBin, exchange := ExchangeAtom}, Options) ->
     request(#{uri => Path, method => get}, Options).
 
 
--spec wallet_option(options()) -> either(payload()).
+-spec wallet_option(options()) -> either(wallet_option_result()).
+% TODO: convert payload() to wallet_option_result()
 wallet_option(Options) ->
     request(#{uri => <<"/kabusapi/wallet/option">>, method => get}, Options).
 
 
--spec wallet_option(ticker(), options()) -> either(payload()).
+-spec wallet_option(ticker(), options()) -> either(wallet_option_result()).
+% TODO: convert payload() to wallet_option_result()
 wallet_option(#{symbol := SymbolBin, exchange := ExchangeAtom}, Options) ->
     ExchangeCode = maps:get(ExchangeAtom, kabue_mufje_enum:exchange()),
     Path = iolist_to_binary([
@@ -515,7 +585,8 @@ wallet_option(#{symbol := SymbolBin, exchange := ExchangeAtom}, Options) ->
 
 -spec order_list(
         #{ product => kabue_mufje_enum:product() }
-      , options()) -> either(payload()).
+      , options()) -> either(order_list_result()).
+% TODO: convert payload() to order_list_result()
 order_list(Query0, Options) when is_map(Query0) ->
     Q = maps:from_list(lists:filtermap(fun
         ({product, Product}) ->
@@ -525,13 +596,15 @@ order_list(Query0, Options) when is_map(Query0) ->
     request(#{uri => <<"/kabusapi/orders">>, method => get, q => Q}, Options).
 
 
--spec order_detail(order_id(), options()) -> either(payload()).
+-spec order_detail(order_id(), options()) -> either(order_detail_result()).
+% TODO: convert payload() to order_detail_result()
 order_detail(OrderIdBin, Options) ->
     Q = #{ <<"id">> => klsn_binstr:from_any(OrderIdBin) },
     request(#{uri => <<"/kabusapi/orders">>, method => get, q => Q}, Options).
 
 
--spec position_list(options()) -> either(payload()).
+-spec position_list(options()) -> either(position_list_result()).
+% TODO: convert payload() to position_list_result()
 position_list(Options) ->
     request(#{uri => <<"/kabusapi/positions">>, method => get}, Options).
 
