@@ -19,8 +19,25 @@
       , register/2
       , unregister/2
       , unregister_all/1
+      , board/2
+      , symbol/2
+      , exchange/1
+      , sendorder_future/2
+      , sendorder_option/2
+      , cancelorder/2
       , wallet_cash/1
       , wallet_cash/2
+      , wallet_future/1
+      , wallet_future/2
+      , wallet_margin/1
+      , wallet_margin/2
+      , wallet_option/1
+      , wallet_option/2
+      , symbol_future/2
+      , symbol_option/2
+      , order_list/2
+      , order_detail/2
+      , position_list/1
     ]).
 
 
@@ -64,6 +81,7 @@
         symbol => symbol()
       , exchange => kabue_mufje_enum:exchange()
     }.
+
 
 
 -spec ranking(
@@ -219,11 +237,139 @@ wallet_cash(#{symbol := SymbolBin, exchange := ExchangeAtom}, Options) ->
     ExchangeCode = maps:get(ExchangeAtom, kabue_mufje_enum:exchange()),
     Path = iolist_to_binary([
         "/kabusapi/wallet/cash/",
+
+                             
+%% ------------------------------------------------------------------
+%%  SendOrder (Option) endpoint
+%% ------------------------------------------------------------------
+
+-spec sendorder_option(
+        #{
+            symbol := symbol()
+          , exchange := kabue_mufje_enum:exchange()
+          , trade_type := integer()
+          , time_in_force := integer()
+          , side := kabue_mufje_enum:side()
+          , qty := integer()
+          , price := integer()
+          , expire_day := integer()
+          , front_order_type := kabue_mufje_enum:front_order_type()
+          , reverse_limit_order => #{
+                trigger_sec := kabue_mufje_enum:trigger_sec()
+              , trigger_price := float()
+              , under_over := kabue_mufje_enum:under_over()
+              , after_hit_order_type := kabue_mufje_enum:after_hit_order_type()
+              , after_hit_price := float()
+            }
+        }
+      , options()
+    ) -> either(payload()).
+sendorder_option(ReqPayload0, Options) when is_map(ReqPayload0) ->
+    Payload = maps:from_list(lists:filtermap(fun
+        ({symbol, Symbol}) -> {true, {<<"Symbol">>, Symbol}};
+        ({exchange, Exchange}) -> {true, {<<"Exchange">>, maps:get(Exchange, kabue_mufje_enum:exchange())}};
+        ({trade_type, Val}) -> {true, {<<"TradeType">>, Val}};
+        ({time_in_force, Val}) -> {true, {<<"TimeInForce">>, Val}};
+        ({side, Side}) -> {true, {<<"Side">>, maps:get(Side, kabue_mufje_enum:side())}};
+        ({qty, Qty}) -> {true, {<<"Qty">>, Qty}};
+        ({price, Price}) -> {true, {<<"Price">>, Price}};
+        ({expire_day, Day}) -> {true, {<<"ExpireDay">>, Day}};
+        ({front_order_type, Type}) -> {true, {<<"FrontOrderType">>, maps:get(Type, kabue_mufje_enum:front_order_type())}};
+        ({reverse_limit_order, RLO}) ->
+            Map = #{
+                <<"TriggerSec">> => maps:get(maps:get(trigger_sec, RLO), kabue_mufje_enum:trigger_sec())
+              , <<"TriggerPrice">> => maps:get(trigger_price, RLO)
+              , <<"UnderOver">> => maps:get(maps:get(under_over, RLO), kabue_mufje_enum:under_over())
+              , <<"AfterHitOrderType">> => maps:get(maps:get(after_hit_order_type, RLO), kabue_mufje_enum:after_hit_order_type())
+              , <<"AfterHitPrice">> => maps:get(after_hit_price, RLO)
+            },
+            {true, {<<"ReverseLimitOrder">>, Map}};
+        (_) -> false
+    end, maps:to_list(ReqPayload0))),
+    request(#{
+        uri => <<"/kabusapi/sendorder/option">>
+      , method => post
+      , payload => Payload
+    }, Options).
+
+
+%% ------------------------------------------------------------------
+%%  SendOrder (Future) endpoint
+%% ------------------------------------------------------------------
+
+-spec sendorder_future(
+        #{
+            symbol := symbol()
+          , exchange := kabue_mufje_enum:exchange()
+          , trade_type := integer()
+          , time_in_force := integer()
+          , side := kabue_mufje_enum:side()
+          , qty := integer()
+          , price := integer()
+          , expire_day := integer()
+          , front_order_type := kabue_mufje_enum:front_order_type()
+          , reverse_limit_order => #{
+                trigger_sec := kabue_mufje_enum:trigger_sec()
+              , trigger_price := float()
+              , under_over := kabue_mufje_enum:under_over()
+              , after_hit_order_type := kabue_mufje_enum:after_hit_order_type()
+              , after_hit_price := float()
+            }
+        }
+      , options()
+    ) -> either(payload()).
+sendorder_future(ReqPayload0, Options) when is_map(ReqPayload0) ->
+    Payload = maps:from_list(lists:filtermap(fun
+        ({symbol, Symbol}) -> {true, {<<"Symbol">>, Symbol}};
+        ({exchange, Exchange}) -> {true, {<<"Exchange">>, maps:get(Exchange, kabue_mufje_enum:exchange())}};
+        ({trade_type, Val}) -> {true, {<<"TradeType">>, Val}};
+        ({time_in_force, Val}) -> {true, {<<"TimeInForce">>, Val}};
+        ({side, Side}) -> {true, {<<"Side">>, maps:get(Side, kabue_mufje_enum:side())}};
+        ({qty, Qty}) -> {true, {<<"Qty">>, Qty}};
+        ({price, Price}) -> {true, {<<"Price">>, Price}};
+        ({expire_day, Day}) -> {true, {<<"ExpireDay">>, Day}};
+        ({front_order_type, Type}) -> {true, {<<"FrontOrderType">>, maps:get(Type, kabue_mufje_enum:front_order_type())}};
+        ({reverse_limit_order, RLO}) ->
+            Map = #{
+                <<"TriggerSec">> => maps:get(maps:get(trigger_sec, RLO), kabue_mufje_enum:trigger_sec())
+              , <<"TriggerPrice">> => maps:get(trigger_price, RLO)
+              , <<"UnderOver">> => maps:get(maps:get(under_over, RLO), kabue_mufje_enum:under_over())
+              , <<"AfterHitOrderType">> => maps:get(maps:get(after_hit_order_type, RLO), kabue_mufje_enum:after_hit_order_type())
+              , <<"AfterHitPrice">> => maps:get(after_hit_price, RLO)
+            },
+            {true, {<<"ReverseLimitOrder">>, Map}};
+        (_) -> false
+    end, maps:to_list(ReqPayload0))),
+    request(#{
+        uri => <<"/kabusapi/sendorder/future">>
+      , method => post
+      , payload => Payload
+    }, Options).
+
+
+%% ------------------------------------------------------------------
+%%  Exchange information
+%% ------------------------------------------------------------------
+
+-spec exchange(options()) -> either(payload()).
+exchange(Options) ->
+    request(#{uri => <<"/kabusapi/exchange">>, method => get}, Options).
+
+
+%% ------------------------------------------------------------------
+%%  Symbol information
+%% ------------------------------------------------------------------
+
+-spec symbol(ticker(), options()) -> either(payload()).
+symbol(#{symbol := SymbolBin, exchange := ExchangeAtom}, Options) ->
+    ExchangeCode = maps:get(ExchangeAtom, kabue_mufje_enum:exchange()),
+    Uri = iolist_to_binary([
+        "/kabusapi/symbol/",
         SymbolBin,
         "@",
         klsn_binstr:from_any(ExchangeCode)
     ]),
-    request(#{uri => Path, method => get}, Options).
+    request(#{uri => Uri, method => get}, Options).
 
 
 -spec register(
@@ -289,6 +435,27 @@ parse_regist_list(Payload) ->
                     }
             end, RegistList),
             {right, Res};
+        {left, Left} ->
+            {left, Left}
+    end.
+
+
+%% ------------------------------------------------------------------
+%%  Board information
+%% ------------------------------------------------------------------
+
+-spec board(ticker(), options()) -> either(kabue_mufje_types:board()).
+board(#{symbol := SymbolBin, exchange := ExchangeAtom}, Options) ->
+    ExchangeCode = maps:get(ExchangeAtom, kabue_mufje_enum:exchange()),
+    Uri = iolist_to_binary([
+        "/kabusapi/board/",
+        SymbolBin,
+        "@",
+        klsn_binstr:from_any(ExchangeCode)
+    ]),
+    case request(#{uri => Uri, method => get}, Options) of
+        {right, Payload} ->
+            {right, kabue_mufje_types:payload_to_board(Payload)};
         {left, Left} ->
             {left, Left}
     end.
@@ -490,5 +657,23 @@ request_(Request=#{method:=Method, uri:=Uri}, Options) ->
     end.
 
 % lists:map(fun(#{<<"Symbol">>:=Ticker})-> kabue_rakuten_rss_market:add(Ticker) end, maps:get(<<"Ranking">>, element(2, kabue_mufje_rest_apic:ranking(trading_volume_top, #{})))).
+
+
+%% ------------------------------------------------------------------
+%%  CancelOrder endpoint
+%% ------------------------------------------------------------------
+
+-spec cancelorder(
+        #{
+            order_id := order_id()
+        }
+      , options()) -> either(payload()).
+cancelorder(#{order_id := OrderId}, Options) ->
+    Payload = #{ <<"OrderId">> => OrderId },
+    request(#{
+        uri => <<"/kabusapi/cancelorder">>
+      , method => put
+      , payload => Payload
+    }, Options).
 
 
