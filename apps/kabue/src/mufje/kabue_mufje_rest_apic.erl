@@ -22,7 +22,7 @@
       , unregister_all/1
       , board/2
       , symbol/2
-      , exchange/1
+      , exchange/2
       , sendorder_future/2
       , sendorder_option/2
       , cancelorder/2
@@ -34,8 +34,6 @@
       , wallet_margin/2
       , wallet_option/1
       , wallet_option/2
-      , symbol_future/2
-      , symbol_option/2
       , order_list/2
       , order_detail/2
       , position_list/1
@@ -321,9 +319,13 @@ symbol(#{symbol := SymbolBin, exchange := ExchangeAtom}, Options) ->
     request(#{uri => Uri, method => get}, Options).
 
 
--spec exchange(options()) -> either(payload()).
-exchange(Options) ->
-    request(#{uri => <<"/kabusapi/exchange">>, method => get}, Options).
+
+
+-spec exchange(kabue_mufje_enum:symbol(), options()) -> either(payload()).
+exchange(SymbolAtom, Options) ->
+    SymbolBin = maps:get(SymbolAtom, kabue_mufje_enum:symbol()),
+    Uri = iolist_to_binary([<<"/kabusapi/exchange/">>, SymbolBin]),
+    request(#{uri => Uri, method => get}, Options).
 
 
 -spec sendorder_future(
@@ -508,26 +510,7 @@ wallet_option(#{symbol := SymbolBin, exchange := ExchangeAtom}, Options) ->
     request(#{uri => Path, method => get}, Options).
 
 
--spec symbol_future(ticker(), options()) -> either(payload()).
-symbol_future(#{symbol := SymbolBin, exchange := ExchangeAtom}, Options) ->
-    _ExchangeCode = maps:get(ExchangeAtom, kabue_mufje_enum:exchange()),
-    Uri = iolist_to_binary([
-        "/kabusapi/symbol/",
-        SymbolBin,
-        "/future"
-    ]),
-    request(#{uri => Uri, method => get}, Options).
 
-
--spec symbol_option(ticker(), options()) -> either(payload()).
-symbol_option(#{symbol := SymbolBin, exchange := ExchangeAtom}, Options) ->
-    _ExchangeCode = maps:get(ExchangeAtom, kabue_mufje_enum:exchange()),
-    Uri = iolist_to_binary([
-        "/kabusapi/symbol/",
-        SymbolBin,
-        "/option"
-    ]),
-    request(#{uri => Uri, method => get}, Options).
 
 
 -spec order_list(
@@ -544,11 +527,8 @@ order_list(Query0, Options) when is_map(Query0) ->
 
 -spec order_detail(order_id(), options()) -> either(payload()).
 order_detail(OrderIdBin, Options) ->
-    Path = iolist_to_binary([
-        "/kabusapi/orders/",
-        klsn_binstr:from_any(OrderIdBin)
-    ]),
-    request(#{uri => Path, method => get}, Options).
+    Q = #{ <<"id">> => klsn_binstr:from_any(OrderIdBin) },
+    request(#{uri => <<"/kabusapi/orders">>, method => get, q => Q}, Options).
 
 
 -spec position_list(options()) -> either(payload()).
