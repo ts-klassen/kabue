@@ -660,6 +660,15 @@ request_(Request=#{method:=Method, uri:=Uri}, Options) ->
 
 
 %% ------------------------------------------------------------------
+%%  Position list endpoint
+%% ------------------------------------------------------------------
+
+-spec position_list(options()) -> either(payload()).
+position_list(Options) ->
+    request(#{uri => <<"/kabusapi/positions">>, method => get}, Options).
+
+
+%% ------------------------------------------------------------------
 %%  Order detail endpoint
 %% ------------------------------------------------------------------
 
