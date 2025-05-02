@@ -20,6 +20,24 @@
       , unregister/2
       , unregister_all/1
       , board/2
+      , symbol/2
+      , exchange/1
+      , sendorder_future/2
+      , sendorder_option/2
+      , cancelorder/2
+      , wallet_cash/1
+      , wallet_cash/2
+      , wallet_future/1
+      , wallet_future/2
+      , wallet_margin/1
+      , wallet_margin/2
+      , wallet_option/1
+      , wallet_option/2
+      , symbol_future/2
+      , symbol_option/2
+      , order_list/2
+      , order_detail/2
+      , position_list/1
     ]).
 
 
