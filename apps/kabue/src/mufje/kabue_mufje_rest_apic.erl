@@ -660,6 +660,32 @@ request_(Request=#{method:=Method, uri:=Uri}, Options) ->
 
 
 %% ------------------------------------------------------------------
+%%  Symbol Future & Symbol Option endpoints
+%% ------------------------------------------------------------------
+
+-spec symbol_future(ticker(), options()) -> either(payload()).
+symbol_future(#{symbol := SymbolBin, exchange := ExchangeAtom}, Options) ->
+    _ExchangeCode = maps:get(ExchangeAtom, kabue_mufje_enum:exchange()),
+    Uri = iolist_to_binary([
+        "/kabusapi/symbol/",
+        SymbolBin,
+        "/future"
+    ]),
+    request(#{uri => Uri, method => get}, Options).
+
+
+-spec symbol_option(ticker(), options()) -> either(payload()).
+symbol_option(#{symbol := SymbolBin, exchange := ExchangeAtom}, Options) ->
+    _ExchangeCode = maps:get(ExchangeAtom, kabue_mufje_enum:exchange()),
+    Uri = iolist_to_binary([
+        "/kabusapi/symbol/",
+        SymbolBin,
+        "/option"
+    ]),
+    request(#{uri => Uri, method => get}, Options).
+
+
+%% ------------------------------------------------------------------
 %%  Wallet Option endpoints
 %% ------------------------------------------------------------------
 
