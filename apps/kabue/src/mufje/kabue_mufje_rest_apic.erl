@@ -19,6 +19,7 @@
       , register/2
       , unregister/2
       , unregister_all/1
+      , board/2
     ]).
 
 
@@ -62,6 +63,7 @@
         symbol => symbol()
       , exchange => kabue_mufje_enum:exchange()
     }.
+
 
 
 -spec ranking(
@@ -266,6 +268,27 @@ parse_regist_list(Payload) ->
                     }
             end, RegistList),
             {right, Res};
+        {left, Left} ->
+            {left, Left}
+    end.
+
+
+%% ------------------------------------------------------------------
+%%  Board information
+%% ------------------------------------------------------------------
+
+-spec board(ticker(), options()) -> either(kabue_mufje_types:board()).
+board(#{symbol := SymbolBin, exchange := ExchangeAtom}, Options) ->
+    ExchangeCode = maps:get(ExchangeAtom, kabue_mufje_enum:exchange()),
+    Uri = iolist_to_binary([
+        "/kabusapi/board/",
+        SymbolBin,
+        "@",
+        klsn_binstr:from_any(ExchangeCode)
+    ]),
+    case request(#{uri => Uri, method => get}, Options) of
+        {right, Payload} ->
+            {right, kabue_mufje_types:payload_to_board(Payload)};
         {left, Left} ->
             {left, Left}
     end.
