@@ -214,8 +214,8 @@
       | ranking_category_entry().
 
 -type ranking_result() :: #{
-        type := 1..15 | integer() % documented Type values
-      , exchange_division := klsn:binstr()
+        type := kabue_mufje_enum:ranking_type()
+      , exchange_division := kabue_mufje_enum:exchange_division()
       , ranking := [ranking_entry()]
     }. % TODO: refine for other ranking categories
 % TODO
