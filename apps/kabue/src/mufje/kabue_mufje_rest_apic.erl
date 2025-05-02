@@ -224,6 +224,22 @@ order(ReqPayload0, Options) ->
 
 
 %% ------------------------------------------------------------------
+%%  Wallet Cash endpoints
+%% ------------------------------------------------------------------
+
+-spec wallet_cash(options()) -> either(payload()).
+wallet_cash(Options) ->
+    request(#{uri => <<"/kabusapi/wallet/cash">>, method => get}, Options).
+
+
+-spec wallet_cash(ticker(), options()) -> either(payload()).
+wallet_cash(#{symbol := SymbolBin, exchange := ExchangeAtom}, Options) ->
+    ExchangeCode = maps:get(ExchangeAtom, kabue_mufje_enum:exchange()),
+    Path = iolist_to_binary([
+        "/kabusapi/wallet/cash/",
+
+                             
+%% ------------------------------------------------------------------
 %%  SendOrder (Option) endpoint
 %% ------------------------------------------------------------------
 
