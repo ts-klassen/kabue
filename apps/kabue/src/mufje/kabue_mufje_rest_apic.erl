@@ -660,6 +660,26 @@ request_(Request=#{method:=Method, uri:=Uri}, Options) ->
 
 
 %% ------------------------------------------------------------------
+%%  Wallet Margin endpoints
+%% ------------------------------------------------------------------
+
+-spec wallet_margin(options()) -> either(payload()).
+wallet_margin(Options) ->
+    request(#{uri => <<"/kabusapi/wallet/margin">>, method => get}, Options).
+
+
+-spec wallet_margin(ticker(), options()) -> either(payload()).
+wallet_margin(#{symbol := SymbolBin, exchange := ExchangeAtom}, Options) ->
+    ExchangeCode = maps:get(ExchangeAtom, kabue_mufje_enum:exchange()),
+    Path = iolist_to_binary([
+        "/kabusapi/wallet/margin/",
+        SymbolBin,
+        "@",
+        klsn_binstr:from_any(ExchangeCode)
+    ]),
+    request(#{uri => Path, method => get}, Options).
+
+%% ------------------------------------------------------------------
 %%  Wallet Future endpoints
 %% ------------------------------------------------------------------
 
@@ -696,5 +716,4 @@ cancelorder(#{order_id := OrderId}, Options) ->
       , method => put
       , payload => Payload
     }, Options).
-
 
