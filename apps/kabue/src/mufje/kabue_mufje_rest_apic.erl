@@ -664,13 +664,17 @@ cancelorder(#{order_id := OrderId}, Options) ->
 
 
 -spec wallet_cash(options()) -> either(wallet_cash_result()).
-% TODO: convert payload() to wallet_cash_result()
+%% TODO: (codex)
+%% 1. Add a private helper function  payload_to_wallet_cash/1  in this module
+%%    that converts the raw API payload returned by /wallet/cash to the
+%%    wallet_cash_result() type.  (Keep it local; REST-only.)
+%% 2. Refactor BOTH wallet_cash/1 and wallet_cash/2 clauses below to call the
+%%    helper and delete their individual TODO markers.
 wallet_cash(Options) ->
     request(#{uri => <<"/kabusapi/wallet/cash">>, method => get}, Options).
 
 
 -spec wallet_cash(ticker(), options()) -> either(wallet_cash_result()).
-% TODO: convert payload() to wallet_cash_result()
 wallet_cash(#{symbol := SymbolBin, exchange := ExchangeAtom}, Options) ->
     ExchangeCode = maps:get(ExchangeAtom, kabue_mufje_enum:exchange()),
     Path = iolist_to_binary([
@@ -683,13 +687,14 @@ wallet_cash(#{symbol := SymbolBin, exchange := ExchangeAtom}, Options) ->
 
 
 -spec wallet_future(options()) -> either(wallet_future_result()).
-% TODO: convert payload() to wallet_future_result()
+%% TODO: (codex)
+%% 1. Implement payload_to_wallet_future/1 (local helper).
+%% 2. Update both wallet_future clauses to use it and remove extra TODO lines.
 wallet_future(Options) ->
     request(#{uri => <<"/kabusapi/wallet/future">>, method => get}, Options).
 
 
 -spec wallet_future(ticker(), options()) -> either(wallet_future_result()).
-% TODO: convert payload() to wallet_future_result()
 wallet_future(#{symbol := SymbolBin, exchange := ExchangeAtom}, Options) ->
     ExchangeCode = maps:get(ExchangeAtom, kabue_mufje_enum:exchange()),
     Path = iolist_to_binary([
@@ -702,13 +707,14 @@ wallet_future(#{symbol := SymbolBin, exchange := ExchangeAtom}, Options) ->
 
 
 -spec wallet_margin(options()) -> either(wallet_margin_result()).
-% TODO: convert payload() to wallet_margin_result()
+%% TODO: (codex)
+%% 1. Implement payload_to_wallet_margin/1 locally.
+%% 2. Refactor both wallet_margin clauses to use it; drop duplicate TODO.
 wallet_margin(Options) ->
     request(#{uri => <<"/kabusapi/wallet/margin">>, method => get}, Options).
 
 
 -spec wallet_margin(ticker(), options()) -> either(wallet_margin_result()).
-% TODO: convert payload() to wallet_margin_result()
 wallet_margin(#{symbol := SymbolBin, exchange := ExchangeAtom}, Options) ->
     ExchangeCode = maps:get(ExchangeAtom, kabue_mufje_enum:exchange()),
     Path = iolist_to_binary([
@@ -721,13 +727,14 @@ wallet_margin(#{symbol := SymbolBin, exchange := ExchangeAtom}, Options) ->
 
 
 -spec wallet_option(options()) -> either(wallet_option_result()).
-% TODO: convert payload() to wallet_option_result()
+%% TODO: (codex)
+%% 1. Implement payload_to_wallet_option/1 here.
+%% 2. Refactor both wallet_option clauses to leverage it; remove duplicate TODO.
 wallet_option(Options) ->
     request(#{uri => <<"/kabusapi/wallet/option">>, method => get}, Options).
 
 
 -spec wallet_option(ticker(), options()) -> either(wallet_option_result()).
-% TODO: convert payload() to wallet_option_result()
 wallet_option(#{symbol := SymbolBin, exchange := ExchangeAtom}, Options) ->
     ExchangeCode = maps:get(ExchangeAtom, kabue_mufje_enum:exchange()),
     Path = iolist_to_binary([
