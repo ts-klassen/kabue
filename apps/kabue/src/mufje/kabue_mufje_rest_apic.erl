@@ -262,16 +262,57 @@ ranking(ReqPayload0, Options) ->
     case Res of
         {right, Doc} ->
             RankingList = lists:map(fun(Elem) ->
+                %% Build the entry map.
                 klsn_map:filter(#{
-                    no => klsn_map:liikup([<<"No">>], Elem)
-                  , trend => klsn_map:liikup([<<"Trend">>], Elem)
-                  % TODO: (codex) fill out all fields of `ranking_entry()` type. Example above, keep adding `, some_key => klsn_map:lookup([<<"SomeKey">>], Elem)` for each fields. Delete this TODO comment line when done.
+                    %% Common keys -------------------------------------------------
+                    no                              => klsn_map:lookup([<<"No">>], Elem)
+                  , trend                           => klsn_map:lookup([<<"Trend">>], Elem)
+                  , average_ranking                 => klsn_map:lookup([<<"AverageRanking">>], Elem)
+                  , symbol                          => klsn_map:lookup([<<"Symbol">>], Elem)
+                  , symbol_name                     => klsn_map:lookup([<<"SymbolName">>], Elem)
+                  , current_price                   => klsn_map:lookup([<<"CurrentPrice">>], Elem)
+                  , change_ratio                    => klsn_map:lookup([<<"ChangeRatio">>], Elem)
+                  , change_percentage               => klsn_map:lookup([<<"ChangePercentage">>], Elem)
+                  , current_price_time              => klsn_map:lookup([<<"CurrentPriceTime">>], Elem)
+                  , trading_volume                  => klsn_map:lookup([<<"TradingVolume">>], Elem)
+                  , turnover                        => klsn_map:lookup([<<"Turnover">>], Elem)
+                  , exchange_name                   => klsn_map:lookup([<<"ExchangeName">>], Elem)
+                  , category_name                   => klsn_map:lookup([<<"CategoryName">>], Elem)
+
+                    %% TICK count specific ----------------------------------------
+                  , tick_count                      => klsn_map:lookup([<<"TickCount">>], Elem)
+                  , up_count                        => klsn_map:lookup([<<"UpCount">>], Elem)
+                  , down_count                      => klsn_map:lookup([<<"DownCount">>], Elem)
+
+                    %% Volume spike ------------------------------------------------
+                  , rapid_trade_percentage          => klsn_map:lookup([<<"RapidTradePercentage">>], Elem)
+
+                    %% Amount spike -------------------------------------------------
+                  , rapid_payment_percentage        => klsn_map:lookup([<<"RapidPaymentPercentage">>], Elem)
+
+                    %% Credit information -----------------------------------------
+                  , sell_rapid_payment_percentage   => klsn_map:lookup([<<"SellRapidPaymentPercentage">>], Elem)
+                  , sell_last_week_ratio            => klsn_map:lookup([<<"SellLastWeekRatio">>], Elem)
+                  , buy_rapid_payment_percentage    => klsn_map:lookup([<<"BuyRapidPaymentPercentage">>], Elem)
+                  , buy_last_week_ratio             => klsn_map:lookup([<<"BuyLastWeekRatio">>], Elem)
+                  , ratio                           => klsn_map:lookup([<<"Ratio">>], Elem)
+
+                    %% Industry index ---------------------------------------------
+                  , category                        => klsn_map:lookup([<<"Category">>], Elem)
                 })
             end, maps:get(<<"Ranking">>, Doc)),
             RankingResult = #{
-                type => maps:get(maps:get(<<"Type">>, Doc), klsn_map:invert(kabue_mufje_enum:ranking_type()))
-              , exchange_division := maps:get(maps:get(<<"Type">>, Doc), klsn_map:invert(kabue_mufje_enum:exchange()))
-              , ranking := RankingList
+                type =>
+                    maps:get(
+                        maps:get(<<"Type">>, Doc),
+                        klsn_map:invert(kabue_mufje_enum:ranking_type())
+                    )
+              , exchange_division =>
+                    maps:get(
+                        maps:get(<<"ExchangeDivision">>, Doc),
+                        klsn_map:invert(kabue_mufje_enum:exchange_division())
+                    )
+              , ranking => RankingList
             },
             {right, RankingResult};
         {left, Left} ->
