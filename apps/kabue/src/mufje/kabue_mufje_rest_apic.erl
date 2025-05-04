@@ -410,6 +410,88 @@ payload_to_wallet_option(Doc) ->
 
 
 %%--------------------------------------------------------------------
+%% Orders & Positions helpers
+%%--------------------------------------------------------------------
+
+-spec payload_to_order_entry(map()) -> order_entry().
+payload_to_order_entry(Doc) ->
+    EnumExchange        = klsn_map:invert(kabue_mufje_enum:exchange()),
+    EnumSide            = klsn_map:invert(kabue_mufje_enum:side()),
+    EnumCashMargin      = klsn_map:invert(kabue_mufje_enum:cash_margin()),
+    EnumAccountType     = klsn_map:invert(kabue_mufje_enum:account_type()),
+    EnumDelivType       = klsn_map:invert(kabue_mufje_enum:deliv_type()),
+    EnumMarginTradeType = klsn_map:invert(kabue_mufje_enum:margin_trade_type()),
+    EnumOrderStatus     = klsn_map:invert(kabue_mufje_enum:order_status()),
+
+    Map0 = #{
+        id           => klsn_map:lookup([<<"ID">>], Doc)
+      , ord_type     => klsn_map:lookup([<<"OrdType">>], Doc)
+      , recv_time    => klsn_map:lookup([<<"RecvTime">>], Doc)
+      , symbol       => klsn_map:lookup([<<"Symbol">>], Doc)
+      , symbol_name  => klsn_map:lookup([<<"SymbolName">>], Doc)
+      , exchange_name=> klsn_map:lookup([<<"ExchangeName">>], Doc)
+      , time_in_force=> klsn_map:lookup([<<"TimeInForce">>], Doc)
+      , price        => klsn_map:lookup([<<"Price">>], Doc)
+      , order_qty    => klsn_map:lookup([<<"OrderQty">>], Doc)
+      , cum_qty      => klsn_map:lookup([<<"CumQty">>], Doc)
+      , deliv_type   => maybe_enum(<<"DelivType">>, Doc, EnumDelivType)
+      , expire_day   => klsn_map:lookup([<<"ExpireDay">>], Doc)
+      , margin_premium => klsn_map:lookup([<<"MarginPremium">>], Doc)
+      , details      => case klsn_map:lookup([<<"Details">>], Doc) of
+                            {value, Arr} when is_list(Arr) -> Arr;
+                            _ -> []
+                        end
+    },
+    klsn_map:filter(Map0#{
+        state        => maybe_enum(<<"State">>, Doc, EnumOrderStatus)
+      , order_state  => maybe_enum(<<"OrderState">>, Doc, EnumOrderStatus)
+      , exchange     => maybe_enum(<<"Exchange">>, Doc, EnumExchange)
+      , side         => maybe_enum(<<"Side">>, Doc, EnumSide)
+      , cash_margin  => maybe_enum(<<"CashMargin">>, Doc, EnumCashMargin)
+      , account_type => maybe_enum(<<"AccountType">>, Doc, EnumAccountType)
+      , margin_trade_type => maybe_enum(<<"MarginTradeType">>, Doc, EnumMarginTradeType)
+    }).
+
+-spec maybe_enum(binary(), map(), map()) -> klsn:maybe(term()).
+maybe_enum(Key, Doc, EnumInv) ->
+    case klsn_map:lookup([Key], Doc) of
+        {value, Code} -> klsn_map:lookup([Code], EnumInv);
+        none -> none
+    end.
+
+-spec payload_to_position_entry(map()) -> position_entry().
+payload_to_position_entry(Doc) ->
+    EnumExchange    = klsn_map:invert(kabue_mufje_enum:exchange()),
+    EnumSide        = klsn_map:invert(kabue_mufje_enum:side()),
+    EnumAccountType = klsn_map:invert(kabue_mufje_enum:account_type()),
+    EnumSecurity    = klsn_map:invert(kabue_mufje_enum:security_type()),
+
+    klsn_map:filter(#{
+        execution_id   => klsn_map:lookup([<<"ExecutionID">>], Doc)
+      , account_type   => maybe_enum(<<"AccountType">>, Doc, EnumAccountType)
+      , symbol         => klsn_map:lookup([<<"Symbol">>], Doc)
+      , symbol_name    => klsn_map:lookup([<<"SymbolName">>], Doc)
+      , exchange       => maybe_enum(<<"Exchange">>, Doc, EnumExchange)
+      , exchange_name  => klsn_map:lookup([<<"ExchangeName">>], Doc)
+      , security_type  => maybe_enum(<<"SecurityType">>, Doc, EnumSecurity)
+      , execution_day  => klsn_map:lookup([<<"ExecutionDay">>], Doc)
+      , price          => klsn_map:lookup([<<"Price">>], Doc)
+      , leaves_qty     => klsn_map:lookup([<<"LeavesQty">>], Doc)
+      , hold_qty       => klsn_map:lookup([<<"HoldQty">>], Doc)
+      , side           => maybe_enum(<<"Side">>, Doc, EnumSide)
+      , expenses       => klsn_map:lookup([<<"Expenses">>], Doc)
+      , commission     => klsn_map:lookup([<<"Commission">>], Doc)
+      , commission_tax => klsn_map:lookup([<<"CommissionTax">>], Doc)
+      , expire_day     => klsn_map:lookup([<<"ExpireDay">>], Doc)
+      , margin_trade_type => klsn_map:lookup([<<"MarginTradeType">>], Doc)
+      , current_price  => klsn_map:lookup([<<"CurrentPrice">>], Doc)
+      , valuation      => klsn_map:lookup([<<"Valuation">>], Doc)
+      , profit_loss    => klsn_map:lookup([<<"ProfitLoss">>], Doc)
+      , profit_loss_rate => klsn_map:lookup([<<"ProfitLossRate">>], Doc)
+    }).
+
+
+%%--------------------------------------------------------------------
 %% Internal helpers (REST-only)
 %%--------------------------------------------------------------------
 
@@ -1019,28 +1101,43 @@ wallet_option(#{symbol := SymbolBin, exchange := ExchangeAtom}, Options) ->
 -spec order_list(
         #{ product => kabue_mufje_enum:product() }
       , options()) -> either(order_list_result()).
-%% TODO: (codex) Inline conversion to order_list_result() here.
+
 order_list(Query0, Options) when is_map(Query0) ->
     Q = maps:from_list(lists:filtermap(fun
         ({product, Product}) ->
             {true, {<<"product">>, maps:get(Product, kabue_mufje_enum:product())}};
         (_) -> false
     end, maps:to_list(Query0))),
-    request(#{uri => <<"/kabusapi/orders">>, method => get, q => Q}, Options).
+    case request(#{uri => <<"/kabusapi/orders">>, method => get, q => Q}, Options) of
+        {right, List} when is_list(List) ->
+            {right, lists:map(fun payload_to_order_entry/1, List)};
+        {right, Map} -> % single object (edge case)
+            {right, [payload_to_order_entry(Map)]};
+        {left, Left} -> {left, Left}
+    end.
 
 
 -spec order_detail(order_id(), options()) -> either(order_detail_result()).
-%% TODO: (codex) Inline conversion to order_detail_result() (single use).
+
 order_detail(OrderIdBin, Options) ->
     Q = #{ <<"id">> => klsn_binstr:from_any(OrderIdBin) },
-    request(#{uri => <<"/kabusapi/orders">>, method => get, q => Q}, Options).
+    case request(#{uri => <<"/kabusapi/orders">>, method => get, q => Q}, Options) of
+        {right, List} when is_list(List) ->
+            {right, lists:map(fun payload_to_order_entry/1, List)};
+        {right, Map} -> {right, [payload_to_order_entry(Map)]};
+        {left, Left} -> {left, Left}
+    end.
 
 
 -spec position_list(options()) -> either(position_list_result()).
-%% TODO: (codex) Inline conversion to position_list_result() within this
-%% function.
+
 position_list(Options) ->
-    request(#{uri => <<"/kabusapi/positions">>, method => get}, Options).
+    case request(#{uri => <<"/kabusapi/positions">>, method => get}, Options) of
+        {right, List} when is_list(List) ->
+            {right, lists:map(fun payload_to_position_entry/1, List)};
+        {right, Map} -> {right, [payload_to_position_entry(Map)]};
+        {left, Left} -> {left, Left}
+    end.
 
 
 -spec token(options()) -> either(klsn:binstr()).
