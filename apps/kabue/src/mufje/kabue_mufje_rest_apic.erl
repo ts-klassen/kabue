@@ -103,14 +103,10 @@
 %% we incrementally introduce richer structures.
 %%--------------------------------------------------------------------
 
-
-
-
-
 % Variant for 株価情報 (Type 1-4)
 -type ranking_price_entry() :: #{
         no := non_neg_integer()
-      , trend := 0..5
+      , trend := klsn:binstr()
       , average_ranking := float()
       , symbol := klsn:binstr()
       , symbol_name := klsn:binstr()
@@ -127,7 +123,7 @@
 % Variant for TICK回数 (Type 5)
 -type ranking_tick_entry() :: #{
         no := non_neg_integer()
-      , trend := 0..5
+      , trend := klsn:binstr()
       , average_ranking := float()
       , symbol := klsn:binstr()
       , symbol_name := klsn:binstr()
@@ -147,7 +143,7 @@
 % Variant for 売買高急増 (Type 6)
 -type ranking_trade_volume_entry() :: #{
         no := non_neg_integer()
-      , trend := 0..5
+      , trend := klsn:binstr()
       , average_ranking := float()
       , symbol := klsn:binstr()
       , symbol_name := klsn:binstr()
@@ -164,7 +160,7 @@
 % Variant for 売買代金急増 (Type 7)
 -type ranking_trade_value_entry() :: #{
         no := non_neg_integer()
-      , trend := 0..5
+      , trend := klsn:binstr()
       , average_ranking := float()
       , symbol := klsn:binstr()
       , symbol_name := klsn:binstr()
@@ -195,7 +191,7 @@
 % Variant for 業種別指数 (Type 14-15)
 -type ranking_category_entry() :: #{
         no := non_neg_integer()
-      , trend := 0..5
+      , trend := klsn:binstr()
       , average_ranking := float()
       , category := klsn:binstr()
       , category_name := klsn:binstr()
@@ -217,7 +213,8 @@
         type := kabue_mufje_enum:ranking_type()
       , exchange_division := kabue_mufje_enum:exchange_division()
       , ranking := [ranking_entry()]
-    }. % TODO: refine for other ranking categories
+    }.
+
 % TODO
 -type symbol_info() :: map().
 -type exchange_info() :: map().
@@ -263,9 +260,20 @@ ranking(ReqPayload0, Options) ->
       , q => ReqQuery
     } , Options),
     case Res of
-        {right, #{<<"Ranking">> := RankingList}} ->
-            % TODO: convert payload to ranking_result()
-            {right, RankingList};
+        {right, Doc} ->
+            RankingList = lists:map(fun(Elem) ->
+                klsn_map:filter(#{
+                    no => klsn_map:liikup([<<"No">>], Elem)
+                  , trend => klsn_map:liikup([<<"Trend">>], Elem)
+                  % TODO: (codex) fill out all fields of `ranking_entry()` type. Example above, keep adding `, some_key => klsn_map:lookup([<<"SomeKey">>], Elem)` for each fields. Delete this TODO comment line when done.
+                })
+            end, maps:get(<<"Ranking">>, Doc)),
+            RankingResult = #{
+                type => maps:get(maps:get(<<"Type">>, Doc), klsn_map:invert(kabue_mufje_enum:ranking_type()))
+              , exchange_division := maps:get(maps:get(<<"Type">>, Doc), klsn_map:invert(kabue_mufje_enum:exchange()))
+              , ranking := RankingList
+            },
+            {right, RankingResult};
         {left, Left} ->
             {left, Left}
     end.
