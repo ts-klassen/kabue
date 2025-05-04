@@ -362,6 +362,18 @@
 
 -type position_list_result() :: [position_entry()].
 
+%%--------------------------------------------------------------------
+%% Wallet helpers
+%%--------------------------------------------------------------------
+
+-spec payload_to_wallet_cash(map()) -> wallet_cash_result().
+payload_to_wallet_cash(Doc) ->
+    klsn_map:filter(#{
+        stock_account_wallet         => klsn_map:lookup([<<"StockAccountWallet">>], Doc)
+      , au_kc_stock_account_wallet   => klsn_map:lookup([<<"AuKCStockAccountWallet">>], Doc)
+      , au_jbn_stock_account_wallet  => klsn_map:lookup([<<"AuJbnStockAccountWallet">>], Doc)
+    }).
+
 
 %%--------------------------------------------------------------------
 %% Internal helpers (REST-only)
@@ -872,14 +884,12 @@ cancelorder(#{order_id := OrderId}, Options) ->
 
 
 -spec wallet_cash(options()) -> either(wallet_cash_result()).
-%% TODO: (codex)
-%% 1. Add a private helper function  payload_to_wallet_cash/1  in this module
-%%    that converts the raw API payload returned by /wallet/cash to the
-%%    wallet_cash_result() type.  (Keep it local; REST-only.)
-%% 2. Refactor BOTH wallet_cash/1 and wallet_cash/2 clauses below to call the
-%%    helper and delete their individual TODO markers.
+
 wallet_cash(Options) ->
-    request(#{uri => <<"/kabusapi/wallet/cash">>, method => get}, Options).
+    case request(#{uri => <<"/kabusapi/wallet/cash">>, method => get}, Options) of
+        {right, Doc} -> {right, payload_to_wallet_cash(Doc)};
+        {left, Left} -> {left, Left}
+    end.
 
 
 -spec wallet_cash(ticker(), options()) -> either(wallet_cash_result()).
@@ -891,7 +901,10 @@ wallet_cash(#{symbol := SymbolBin, exchange := ExchangeAtom}, Options) ->
         "@",
         klsn_binstr:from_any(ExchangeCode)
     ]),
-    request(#{uri => Path, method => get}, Options).
+    case request(#{uri => Path, method => get}, Options) of
+        {right, Doc} -> {right, payload_to_wallet_cash(Doc)};
+        {left, Left} -> {left, Left}
+    end.
 
 
 -spec wallet_future(options()) -> either(wallet_future_result()).
