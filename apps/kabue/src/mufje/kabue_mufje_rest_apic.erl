@@ -822,8 +822,6 @@ sendorder_future(ReqPayload0, Options) when is_map(ReqPayload0) ->
         }
       , options()
     ) -> either(sendorder_option_result()).
-%% TODO: (codex) Convert payload to sendorder_option_result() inline in this
-%% function (single use, so no helper).
 sendorder_option(ReqPayload0, Options) when is_map(ReqPayload0) ->
     Payload = maps:from_list(lists:filtermap(fun
         ({symbol, Symbol}) -> {true, {<<"Symbol">>, Symbol}};
@@ -846,11 +844,14 @@ sendorder_option(ReqPayload0, Options) when is_map(ReqPayload0) ->
             {true, {<<"ReverseLimitOrder">>, Map}};
         (_) -> false
     end, maps:to_list(ReqPayload0))),
-    request(#{
-        uri => <<"/kabusapi/sendorder/option">>
-      , method => post
-      , payload => Payload
-    }, Options).
+    case request(#{
+            uri => <<"/kabusapi/sendorder/option">>
+          , method => post
+          , payload => Payload
+        }, Options) of
+        {right, Doc} -> {right, payload_to_order_ack(Doc)};
+        {left, Left} -> {left, Left}
+    end.
 
 
 -spec cancelorder(
