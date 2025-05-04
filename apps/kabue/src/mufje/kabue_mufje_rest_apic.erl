@@ -651,10 +651,9 @@ board(#{symbol := SymbolBin, exchange := ExchangeAtom}, Options) ->
 
 
 -spec symbol(ticker(), options()) -> either(symbol_info()).
-%% TODO: (codex) Convert the raw payload returned by `/symbol` into
-%% symbol_info() directly inside this function (no separate helper needed,
-%% similar style to the `ranking/2` implementation).
+
 symbol(#{symbol := SymbolBin, exchange := ExchangeAtom}, Options) ->
+    %% Build request URI
     ExchangeCode = maps:get(ExchangeAtom, kabue_mufje_enum:exchange()),
     Uri = iolist_to_binary([
         "/kabusapi/symbol/",
@@ -662,18 +661,79 @@ symbol(#{symbol := SymbolBin, exchange := ExchangeAtom}, Options) ->
         "@",
         klsn_binstr:from_any(ExchangeCode)
     ]),
-    request(#{uri => Uri, method => get}, Options).
+
+    %% Perform HTTP call then convert payload
+    case request(#{uri => Uri, method => get}, Options) of
+        {right, Doc} ->
+            EnumExchange = klsn_map:invert(kabue_mufje_enum:exchange()),
+
+            %% Helper to lift Maybe value after enum conversion
+            ExchangeMaybe =
+                case klsn_map:lookup([<<"Exchange">>], Doc) of
+                    {value, Code} -> klsn_map:lookup([Code], EnumExchange);
+                    none -> none
+                end,
+
+            SymbolInfo = klsn_map:filter(#{
+                %% required
+                symbol       => klsn_map:lookup([<<"Symbol">>], Doc)
+              , symbol_name  => klsn_map:lookup([<<"SymbolName">>], Doc)
+
+                %% optional direct transfers
+              , display_name        => klsn_map:lookup([<<"DisplayName">>], Doc)
+              , exchange_name       => klsn_map:lookup([<<"ExchangeName">>], Doc)
+              , bis_category        => klsn_map:lookup([<<"BisCategory">>], Doc)
+              , total_market_value  => klsn_map:lookup([<<"TotalMarketValue">>], Doc)
+              , total_stocks        => klsn_map:lookup([<<"TotalStocks">>], Doc)
+              , trading_unit        => klsn_map:lookup([<<"TradingUnit">>], Doc)
+              , fiscal_year_end_basic => klsn_map:lookup([<<"FiscalYearEndBasic">>], Doc)
+              , price_range_group     => klsn_map:lookup([<<"PriceRangeGroup">>], Doc)
+              , kc_margin_buy          => klsn_map:lookup([<<"KCMarginBuy">>], Doc)
+              , kc_margin_sell         => klsn_map:lookup([<<"KCMarginSell">>], Doc)
+              , margin_buy             => klsn_map:lookup([<<"MarginBuy">>], Doc)
+              , margin_sell            => klsn_map:lookup([<<"MarginSell">>], Doc)
+              , upper_limit            => klsn_map:lookup([<<"UpperLimit">>], Doc)
+              , lower_limit            => klsn_map:lookup([<<"LowerLimit">>], Doc)
+              , underlyer              => klsn_map:lookup([<<"Underlyer">>], Doc)
+              , deriv_month            => klsn_map:lookup([<<"DerivMonth">>], Doc)
+              , trade_start            => klsn_map:lookup([<<"TradeStart">>], Doc)
+              , trade_end              => klsn_map:lookup([<<"TradeEnd">>], Doc)
+              , strike_price           => klsn_map:lookup([<<"StrikePrice">>], Doc)
+              , put_or_call            => klsn_map:lookup([<<"PutOrCall">>], Doc)
+              , clearing_price         => klsn_map:lookup([<<"ClearingPrice">>], Doc)
+
+                %% converted field (exchange integer -> atom)
+              , exchange              => ExchangeMaybe
+            }),
+            {right, SymbolInfo};
+        {left, Left} ->
+            {left, Left}
+    end.
 
 
 
 
 -spec exchange(kabue_mufje_enum:symbol(), options()) -> either(exchange_info()).
-%% TODO: (codex) Inline-convert the payload to exchange_info() within this
-%% function (no external helper; follow `ranking/2` pattern).
+
 exchange(SymbolAtom, Options) ->
+    %% Build URI from symbolic atom
     SymbolBin = maps:get(SymbolAtom, kabue_mufje_enum:symbol()),
     Uri = iolist_to_binary([<<"/kabusapi/exchange/">>, SymbolBin]),
-    request(#{uri => Uri, method => get}, Options).
+
+    case request(#{uri => Uri, method => get}, Options) of
+        {right, Doc} ->
+            ExchangeInfo = klsn_map:filter(#{
+                symbol     => klsn_map:lookup([<<"Symbol">>], Doc)
+              , bid_price  => klsn_map:lookup([<<"BidPrice">>], Doc)
+              , ask_price  => klsn_map:lookup([<<"AskPrice">>], Doc)
+              , spread     => klsn_map:lookup([<<"Spread">>], Doc)
+              , change     => klsn_map:lookup([<<"Change">>], Doc)
+              , time       => klsn_map:lookup([<<"Time">>], Doc)
+            }),
+            {right, ExchangeInfo};
+        {left, Left} ->
+            {left, Left}
+    end.
 
 
 -spec sendorder_future(
