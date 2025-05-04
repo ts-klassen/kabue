@@ -655,9 +655,10 @@ order(ReqPayload0, Options) ->
             Value = maps:get(ClosePositionOrder, Enum),
             {true, {<<"ClosePositionOrder">>, Value}};
         ({close_positions, ClosePositions}) ->
-            lists:map(fun(#{hold_id:=HoldID, qty:=Qty})->
-                #{<<"HoldID">> => HoldID, <<"Qty">> => Qty}
-            end, ClosePositions);
+            List = lists:map(fun(#{hold_id := HoldID, qty := Qty}) ->
+                        #{<<"HoldID">> => HoldID, <<"Qty">> => Qty}
+                    end, ClosePositions),
+            {true, {<<"ClosePositions">>, List}};
         ({front_order_type, FrontOrderType}) ->
             Enum = kabue_mufje_enum:front_order_type(),
             {true, {<<"FrontOrderType">>,  maps:get(FrontOrderType, Enum)}};
@@ -666,27 +667,26 @@ order(ReqPayload0, Options) ->
         ({expire_day, ExpireDay}) ->
             {true, {<<"ExpireDay">>, ExpireDay}};
         ({reverse_limit_order, ReverseLimitOrder}) ->
-            #{
+            Map = #{
                 <<"TriggerSec">> =>
                     maps:get(
-                        maps:get(trigger_sec, ReverseLimitOrder)
-                      , kabue_mufje_enum:trigger_sec()
+                        maps:get(trigger_sec, ReverseLimitOrder),
+                        kabue_mufje_enum:trigger_sec()
                     )
-              , <<"TriggerPrice">> =>
-                    maps:get(trigger_price, ReverseLimitOrder)
+              , <<"TriggerPrice">> => maps:get(trigger_price, ReverseLimitOrder)
               , <<"UnderOver">> =>
                     maps:get(
-                        maps:get(under_over, ReverseLimitOrder)
-                      , kabue_mufje_enum:under_over()
+                        maps:get(under_over, ReverseLimitOrder),
+                        kabue_mufje_enum:under_over()
                     )
               , <<"AfterHitOrderType">> =>
                     maps:get(
-                        maps:get(after_hit_order_type, ReverseLimitOrder)
-                      , kabue_mufje_enum:after_hit_order_type()
+                        maps:get(after_hit_order_type, ReverseLimitOrder),
+                        kabue_mufje_enum:after_hit_order_type()
                     )
-              , <<"AfterHitPrice">> =>
-                    maps:get(after_hit_price, ReverseLimitOrder)
-            };
+              , <<"AfterHitPrice">> => maps:get(after_hit_price, ReverseLimitOrder)
+            },
+            {true, {<<"ReverseLimitOrder">>, Map}};
         (_) -> false
     end, maps:to_list(ReqPayload0))),
     Res = request(#{
@@ -729,7 +729,7 @@ register(ReqPayload0, Options) ->
           , exchange => kabue_mufje_enum:exchange()
         }]
       , options()
-    ) -> either(ticker()).
+    ) -> either([ticker()]).
 unregister(ReqPayload0, Options) ->
     Symbols = lists:map(fun(Elem) ->
         #{
@@ -752,7 +752,7 @@ unregister_all(Options) ->
     } , Options)).
 
 
--spec parse_regist_list(either(payload())) -> either(ticker()).
+-spec parse_regist_list(either(payload())) -> either([ticker()]).
 parse_regist_list(Payload) ->
     case Payload of
         {right, #{<<"RegistList">>:=RegistList}} ->
