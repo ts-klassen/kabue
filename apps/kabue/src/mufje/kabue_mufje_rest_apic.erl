@@ -215,25 +215,152 @@
       , ranking := [ranking_entry()]
     }.
 
-% TODO
--type symbol_info() :: map().
--type exchange_info() :: map().
+%%--------------------------------------------------------------------
+%% Typed structures for individual REST endpoints
+%%--------------------------------------------------------------------
 
-% TODO
--type sendorder_future_result() :: map().
--type sendorder_option_result() :: map().
--type cancelorder_result() :: map().
+%% /symbol – components/schemas/SymbolSuccess
+-type symbol_info() :: #{
+        %% always present
+        symbol := klsn:binstr()
+      , symbol_name := klsn:binstr()
 
-% TODO
--type wallet_cash_result() :: map().
--type wallet_future_result() :: map().
--type wallet_margin_result() :: map().
--type wallet_option_result() :: map().
+        %% often present (stock/future/option depending on product)
+      , display_name        => klsn:binstr()
+      , exchange            => kabue_mufje_enum:exchange()
+      , exchange_name       => klsn:binstr()
+      , bis_category        => klsn:binstr()
+      , total_market_value  => float()
+      , total_stocks        => float()
+      , trading_unit        => float()
+      , fiscal_year_end_basic => integer()
+      , price_range_group     => klsn:binstr()
+      , kc_margin_buy          => float()
+      , kc_margin_sell         => float()
+      , margin_buy             => float()
+      , margin_sell            => float()
+      , upper_limit            => float()
+      , lower_limit            => float()
+      , underlyer              => klsn:binstr()
+      , deriv_month            => klsn:binstr()
+      , trade_start            => integer()
+      , trade_end              => integer()
+      , strike_price           => float()
+      , put_or_call            => integer()
+      , clearing_price         => float()
+    }.
 
-% TODO
--type order_list_result() :: map().
--type order_detail_result() :: map().
--type position_list_result() :: map().
+%% /exchange – components/schemas/ExchangeResponse
+-type exchange_info() :: #{
+        symbol := klsn:binstr()
+      , bid_price := float()
+      , ask_price := float()
+      , spread := float()
+      , change := float()
+      , time := klsn:binstr()
+    }.
+
+%% Common acknowledgement structure returned by send-order and cancel-order
+-type order_ack() :: #{
+        result := non_neg_integer()
+      , order_id := order_id()
+    }.
+
+-type sendorder_future_result()  :: order_ack().
+-type sendorder_option_result()  :: order_ack().
+-type cancelorder_result()       :: order_ack().
+
+%% /wallet/cash – components/schemas/WalletCashSuccess
+-type wallet_cash_result() :: #{
+        stock_account_wallet        := float()
+      , au_kc_stock_account_wallet  => float()
+      , au_jbn_stock_account_wallet => float()
+    }.
+
+%% /wallet/future – components/schemas/WalletFutureSuccess
+-type wallet_future_result() :: #{
+        future_trade_limit       := float()
+      , margin_requirement       => float()
+      , margin_requirement_sell  => float()
+    }.
+
+%% /wallet/margin – components/schemas/WalletMarginSuccess
+-type wallet_margin_result() :: #{
+        margin_account_wallet           := float()
+      , depositkeep_rate               => float()
+      , consignment_deposit_rate       => float()
+      , cash_of_consignment_deposit_rate => float()
+    }.
+
+%% /wallet/option – components/schemas/WalletOptionSuccess
+-type wallet_option_result() :: #{
+        option_buy_trade_limit  := float()
+      , option_sell_trade_limit := float()
+      , margin_requirement      => float()
+    }.
+
+%%--------------------------------------------------------------------
+%% Orders and positions
+%%--------------------------------------------------------------------
+
+%% Detail element inside the "Details" array (execution lines).  Typed very
+%% loosely for now—users typically treat it as opaque.
+-type order_execution_detail() :: map().
+
+%% Single order entry (components/schemas/OrdersSuccess)
+-type order_entry() :: #{
+        id := order_id()
+      , state := kabue_mufje_enum:order_status()
+      , order_state := kabue_mufje_enum:order_status()
+      , ord_type := term()
+      , recv_time := klsn:binstr()
+      , symbol := symbol()
+      , symbol_name := klsn:binstr()
+      , exchange := kabue_mufje_enum:exchange()
+      , exchange_name := klsn:binstr()
+      , time_in_force := term()
+      , price := float()
+      , order_qty := integer()
+      , cum_qty := integer()
+      , side := kabue_mufje_enum:side()
+      , cash_margin := kabue_mufje_enum:cash_margin()
+      , account_type := kabue_mufje_enum:account_type()
+      , deliv_type := kabue_mufje_enum:deliv_type()
+      , expire_day := integer()
+      , margin_trade_type := kabue_mufje_enum:margin_trade_type()
+      , margin_premium => float()
+      , details := [order_execution_detail()]
+    }.
+
+-type order_list_result()   :: [order_entry()].
+-type order_detail_result() :: [order_entry()].
+
+%% Single position entry (components/schemas/PositionsSuccess)
+-type position_entry() :: #{
+        execution_id := klsn:binstr()
+      , account_type := kabue_mufje_enum:account_type()
+      , symbol := symbol()
+      , symbol_name := klsn:binstr()
+      , exchange := kabue_mufje_enum:exchange()
+      , exchange_name := klsn:binstr()
+      , security_type := kabue_mufje_enum:security_type()
+      , execution_day := integer()
+      , price := float()
+      , leaves_qty := integer()
+      , hold_qty := integer()
+      , side := kabue_mufje_enum:side()
+      , expenses := float()
+      , commission := float()
+      , commission_tax := float()
+      , expire_day => integer()
+      , margin_trade_type => kabue_mufje_enum:margin_trade_type()
+      , current_price := float()
+      , valuation := float()
+      , profit_loss := float()
+      , profit_loss_rate := float()
+    }.
+
+-type position_list_result() :: [position_entry()].
 
 
 
