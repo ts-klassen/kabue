@@ -859,15 +859,16 @@ sendorder_option(ReqPayload0, Options) when is_map(ReqPayload0) ->
             order_id := order_id()
         }
       , options()) -> either(cancelorder_result()).
-%% TODO: (codex) Inline conversion to cancelorder_result() inside this clause
-%% (single endpoint clause – helper not necessary).
 cancelorder(#{order_id := OrderId}, Options) ->
     Payload = #{ <<"OrderId">> => OrderId },
-    request(#{
-        uri => <<"/kabusapi/cancelorder">>
-      , method => put
-      , payload => Payload
-    }, Options).
+    case request(#{
+            uri => <<"/kabusapi/cancelorder">>
+          , method => put
+          , payload => Payload
+        }, Options) of
+        {right, Doc} -> {right, payload_to_order_ack(Doc)};
+        {left, Left} -> {left, Left}
+    end.
 
 
 -spec wallet_cash(options()) -> either(wallet_cash_result()).
