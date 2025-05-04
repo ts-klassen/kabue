@@ -386,6 +386,29 @@ payload_to_wallet_future(Doc) ->
     }).
 
 
+%% /wallet/margin ------------------------------------------------------
+
+-spec payload_to_wallet_margin(map()) -> wallet_margin_result().
+payload_to_wallet_margin(Doc) ->
+    klsn_map:filter(#{
+        margin_account_wallet            => klsn_map:lookup([<<"MarginAccountWallet">>], Doc)
+      , depositkeep_rate                => klsn_map:lookup([<<"DepositkeepRate">>], Doc)
+      , consignment_deposit_rate        => klsn_map:lookup([<<"ConsignmentDepositRate">>], Doc)
+      , cash_of_consignment_deposit_rate => klsn_map:lookup([<<"CashOfConsignmentDepositRate">>], Doc)
+    }).
+
+
+%% /wallet/option ------------------------------------------------------
+
+-spec payload_to_wallet_option(map()) -> wallet_option_result().
+payload_to_wallet_option(Doc) ->
+    klsn_map:filter(#{
+        option_buy_trade_limit  => klsn_map:lookup([<<"OptionBuyTradeLimit">>], Doc)
+      , option_sell_trade_limit => klsn_map:lookup([<<"OptionSellTradeLimit">>], Doc)
+      , margin_requirement      => klsn_map:lookup([<<"MarginRequirement">>], Doc)
+    }).
+
+
 %%--------------------------------------------------------------------
 %% Internal helpers (REST-only)
 %%--------------------------------------------------------------------
@@ -943,11 +966,12 @@ wallet_future(#{symbol := SymbolBin, exchange := ExchangeAtom}, Options) ->
 
 
 -spec wallet_margin(options()) -> either(wallet_margin_result()).
-%% TODO: (codex)
-%% 1. Implement payload_to_wallet_margin/1 locally.
-%% 2. Refactor both wallet_margin clauses to use it; drop duplicate TODO.
+
 wallet_margin(Options) ->
-    request(#{uri => <<"/kabusapi/wallet/margin">>, method => get}, Options).
+    case request(#{uri => <<"/kabusapi/wallet/margin">>, method => get}, Options) of
+        {right, Doc} -> {right, payload_to_wallet_margin(Doc)};
+        {left, Left} -> {left, Left}
+    end.
 
 
 -spec wallet_margin(ticker(), options()) -> either(wallet_margin_result()).
@@ -959,15 +983,19 @@ wallet_margin(#{symbol := SymbolBin, exchange := ExchangeAtom}, Options) ->
         "@",
         klsn_binstr:from_any(ExchangeCode)
     ]),
-    request(#{uri => Path, method => get}, Options).
+    case request(#{uri => Path, method => get}, Options) of
+        {right, Doc} -> {right, payload_to_wallet_margin(Doc)};
+        {left, Left} -> {left, Left}
+    end.
 
 
 -spec wallet_option(options()) -> either(wallet_option_result()).
-%% TODO: (codex)
-%% 1. Implement payload_to_wallet_option/1 here.
-%% 2. Refactor both wallet_option clauses to leverage it; remove duplicate TODO.
+
 wallet_option(Options) ->
-    request(#{uri => <<"/kabusapi/wallet/option">>, method => get}, Options).
+    case request(#{uri => <<"/kabusapi/wallet/option">>, method => get}, Options) of
+        {right, Doc} -> {right, payload_to_wallet_option(Doc)};
+        {left, Left} -> {left, Left}
+    end.
 
 
 -spec wallet_option(ticker(), options()) -> either(wallet_option_result()).
@@ -979,7 +1007,10 @@ wallet_option(#{symbol := SymbolBin, exchange := ExchangeAtom}, Options) ->
         "@",
         klsn_binstr:from_any(ExchangeCode)
     ]),
-    request(#{uri => Path, method => get}, Options).
+    case request(#{uri => Path, method => get}, Options) of
+        {right, Doc} -> {right, payload_to_wallet_option(Doc)};
+        {left, Left} -> {left, Left}
+    end.
 
 
 
