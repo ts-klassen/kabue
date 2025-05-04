@@ -363,6 +363,15 @@
 -type position_list_result() :: [position_entry()].
 
 
+%%--------------------------------------------------------------------
+%% Internal helpers (REST-only)
+%%--------------------------------------------------------------------
+
+-spec payload_to_order_ack(map()) -> order_ack().
+payload_to_order_ack(#{<<"Result">> := Res, <<"OrderId">> := Id}) ->
+    #{result => Res, order_id => Id}.
+
+
 
 -spec ranking(
         #{
@@ -757,8 +766,7 @@ exchange(SymbolAtom, Options) ->
         }
       , options()
     ) -> either(sendorder_future_result()).
-%% TODO: (codex) Inline conversion to sendorder_future_result() here—no
-%% separate helper required since this endpoint has a single clause.
+
 sendorder_future(ReqPayload0, Options) when is_map(ReqPayload0) ->
     Payload = maps:from_list(lists:filtermap(fun
         ({symbol, Symbol}) -> {true, {<<"Symbol">>, Symbol}};
@@ -781,11 +789,16 @@ sendorder_future(ReqPayload0, Options) when is_map(ReqPayload0) ->
             {true, {<<"ReverseLimitOrder">>, Map}};
         (_) -> false
     end, maps:to_list(ReqPayload0))),
-    request(#{
-        uri => <<"/kabusapi/sendorder/future">>
-      , method => post
-      , payload => Payload
-    }, Options).
+    case request(#{
+            uri => <<"/kabusapi/sendorder/future">>
+          , method => post
+          , payload => Payload
+        }, Options) of
+        {right, Doc} ->
+            {right, payload_to_order_ack(Doc)};
+        {left, Left} ->
+            {left, Left}
+    end.
 
 
 -spec sendorder_option(
