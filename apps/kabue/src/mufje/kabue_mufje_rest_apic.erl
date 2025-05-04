@@ -524,7 +524,9 @@ board(#{symbol := SymbolBin, exchange := ExchangeAtom}, Options) ->
 
 
 -spec symbol(ticker(), options()) -> either(symbol_info()).
-% TODO: convert payload() to symbol_info()
+%% TODO: (codex) Convert the raw payload returned by `/symbol` into
+%% symbol_info() directly inside this function (no separate helper needed,
+%% similar style to the `ranking/2` implementation).
 symbol(#{symbol := SymbolBin, exchange := ExchangeAtom}, Options) ->
     ExchangeCode = maps:get(ExchangeAtom, kabue_mufje_enum:exchange()),
     Uri = iolist_to_binary([
@@ -539,7 +541,8 @@ symbol(#{symbol := SymbolBin, exchange := ExchangeAtom}, Options) ->
 
 
 -spec exchange(kabue_mufje_enum:symbol(), options()) -> either(exchange_info()).
-% TODO: convert payload() to exchange_info()
+%% TODO: (codex) Inline-convert the payload to exchange_info() within this
+%% function (no external helper; follow `ranking/2` pattern).
 exchange(SymbolAtom, Options) ->
     SymbolBin = maps:get(SymbolAtom, kabue_mufje_enum:symbol()),
     Uri = iolist_to_binary([<<"/kabusapi/exchange/">>, SymbolBin]),
@@ -567,7 +570,8 @@ exchange(SymbolAtom, Options) ->
         }
       , options()
     ) -> either(sendorder_future_result()).
-% TODO: convert payload() to sendorder_future_result()
+%% TODO: (codex) Inline conversion to sendorder_future_result() here—no
+%% separate helper required since this endpoint has a single clause.
 sendorder_future(ReqPayload0, Options) when is_map(ReqPayload0) ->
     Payload = maps:from_list(lists:filtermap(fun
         ({symbol, Symbol}) -> {true, {<<"Symbol">>, Symbol}};
@@ -618,7 +622,8 @@ sendorder_future(ReqPayload0, Options) when is_map(ReqPayload0) ->
         }
       , options()
     ) -> either(sendorder_option_result()).
-% TODO: convert payload() to sendorder_option_result()
+%% TODO: (codex) Convert payload to sendorder_option_result() inline in this
+%% function (single use, so no helper).
 sendorder_option(ReqPayload0, Options) when is_map(ReqPayload0) ->
     Payload = maps:from_list(lists:filtermap(fun
         ({symbol, Symbol}) -> {true, {<<"Symbol">>, Symbol}};
@@ -653,7 +658,8 @@ sendorder_option(ReqPayload0, Options) when is_map(ReqPayload0) ->
             order_id := order_id()
         }
       , options()) -> either(cancelorder_result()).
-% TODO: convert payload() to cancelorder_result()
+%% TODO: (codex) Inline conversion to cancelorder_result() inside this clause
+%% (single endpoint clause – helper not necessary).
 cancelorder(#{order_id := OrderId}, Options) ->
     Payload = #{ <<"OrderId">> => OrderId },
     request(#{
@@ -752,7 +758,7 @@ wallet_option(#{symbol := SymbolBin, exchange := ExchangeAtom}, Options) ->
 -spec order_list(
         #{ product => kabue_mufje_enum:product() }
       , options()) -> either(order_list_result()).
-% TODO: convert payload() to order_list_result()
+%% TODO: (codex) Inline conversion to order_list_result() here.
 order_list(Query0, Options) when is_map(Query0) ->
     Q = maps:from_list(lists:filtermap(fun
         ({product, Product}) ->
@@ -763,14 +769,15 @@ order_list(Query0, Options) when is_map(Query0) ->
 
 
 -spec order_detail(order_id(), options()) -> either(order_detail_result()).
-% TODO: convert payload() to order_detail_result()
+%% TODO: (codex) Inline conversion to order_detail_result() (single use).
 order_detail(OrderIdBin, Options) ->
     Q = #{ <<"id">> => klsn_binstr:from_any(OrderIdBin) },
     request(#{uri => <<"/kabusapi/orders">>, method => get, q => Q}, Options).
 
 
 -spec position_list(options()) -> either(position_list_result()).
-% TODO: convert payload() to position_list_result()
+%% TODO: (codex) Inline conversion to position_list_result() within this
+%% function.
 position_list(Options) ->
     request(#{uri => <<"/kabusapi/positions">>, method => get}, Options).
 
