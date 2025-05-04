@@ -375,6 +375,17 @@ payload_to_wallet_cash(Doc) ->
     }).
 
 
+%% /wallet/future ------------------------------------------------------
+
+-spec payload_to_wallet_future(map()) -> wallet_future_result().
+payload_to_wallet_future(Doc) ->
+    klsn_map:filter(#{
+        future_trade_limit       => klsn_map:lookup([<<"FutureTradeLimit">>], Doc)
+      , margin_requirement       => klsn_map:lookup([<<"MarginRequirement">>], Doc)
+      , margin_requirement_sell  => klsn_map:lookup([<<"MarginRequirementSell">>], Doc)
+    }).
+
+
 %%--------------------------------------------------------------------
 %% Internal helpers (REST-only)
 %%--------------------------------------------------------------------
@@ -908,11 +919,12 @@ wallet_cash(#{symbol := SymbolBin, exchange := ExchangeAtom}, Options) ->
 
 
 -spec wallet_future(options()) -> either(wallet_future_result()).
-%% TODO: (codex)
-%% 1. Implement payload_to_wallet_future/1 (local helper).
-%% 2. Update both wallet_future clauses to use it and remove extra TODO lines.
+
 wallet_future(Options) ->
-    request(#{uri => <<"/kabusapi/wallet/future">>, method => get}, Options).
+    case request(#{uri => <<"/kabusapi/wallet/future">>, method => get}, Options) of
+        {right, Doc} -> {right, payload_to_wallet_future(Doc)};
+        {left, Left} -> {left, Left}
+    end.
 
 
 -spec wallet_future(ticker(), options()) -> either(wallet_future_result()).
@@ -924,7 +936,10 @@ wallet_future(#{symbol := SymbolBin, exchange := ExchangeAtom}, Options) ->
         "@",
         klsn_binstr:from_any(ExchangeCode)
     ]),
-    request(#{uri => Path, method => get}, Options).
+    case request(#{uri => Path, method => get}, Options) of
+        {right, Doc} -> {right, payload_to_wallet_future(Doc)};
+        {left, Left} -> {left, Left}
+    end.
 
 
 -spec wallet_margin(options()) -> either(wallet_margin_result()).
