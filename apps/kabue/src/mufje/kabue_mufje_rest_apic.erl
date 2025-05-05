@@ -9,6 +9,20 @@
       , symbol/0
       , order_id/0
       , ticker/0
+      % custom response types (do not directly expose payload())
+      , ranking_result/0
+      , symbol_info/0
+      , exchange_info/0
+      , sendorder_future_result/0
+      , sendorder_option_result/0
+      , cancelorder_result/0
+      , wallet_cash_result/0
+      , wallet_future_result/0
+      , wallet_margin_result/0
+      , wallet_option_result/0
+      , order_list_result/0
+      , order_detail_result/0
+      , position_list_result/0
     ]).
 
 
@@ -81,6 +95,410 @@
       , exchange => kabue_mufje_enum:exchange()
     }.
 
+%%--------------------------------------------------------------------
+%% Custom response types for each API endpoint.
+%% Currently they are defined as opaque maps.  They are intentionally
+%% kept distinct from the generic `payload()` type so that callers can
+%% use the more specific names in their specs and pattern matches while
+%% we incrementally introduce richer structures.
+%%--------------------------------------------------------------------
+
+% Variant for 株価情報 (Type 1-4)
+-type ranking_price_entry() :: #{
+        no := non_neg_integer()
+      , trend := klsn:binstr()
+      , average_ranking := float()
+      , symbol := klsn:binstr()
+      , symbol_name := klsn:binstr()
+      , current_price := float()
+      , change_ratio := float()
+      , change_percentage := float()
+      , current_price_time := klsn:binstr()
+      , trading_volume := float()
+      , turnover := float()
+      , exchange_name := klsn:binstr()
+      , category_name := klsn:binstr()
+    }.
+
+% Variant for TICK回数 (Type 5)
+-type ranking_tick_entry() :: #{
+        no := non_neg_integer()
+      , trend := klsn:binstr()
+      , average_ranking := float()
+      , symbol := klsn:binstr()
+      , symbol_name := klsn:binstr()
+      , current_price := float()
+      , change_ratio := float()
+      , change_percentage := float()
+      , tick_count := non_neg_integer()
+      , up_count := non_neg_integer()
+      , down_count := non_neg_integer()
+      , trading_volume := float()
+      , turnover := float()
+      , exchange_name := klsn:binstr()
+      , category_name := klsn:binstr()
+    }.
+
+
+% Variant for 売買高急増 (Type 6)
+-type ranking_trade_volume_entry() :: #{
+        no := non_neg_integer()
+      , trend := klsn:binstr()
+      , average_ranking := float()
+      , symbol := klsn:binstr()
+      , symbol_name := klsn:binstr()
+      , current_price := float()
+      , change_ratio := float()
+      , rapid_trade_percentage := float()
+      , trading_volume := float()
+      , current_price_time := klsn:binstr()
+      , change_percentage := float()
+      , exchange_name := klsn:binstr()
+      , category_name := klsn:binstr()
+    }.
+
+% Variant for 売買代金急増 (Type 7)
+-type ranking_trade_value_entry() :: #{
+        no := non_neg_integer()
+      , trend := klsn:binstr()
+      , average_ranking := float()
+      , symbol := klsn:binstr()
+      , symbol_name := klsn:binstr()
+      , current_price := float()
+      , change_ratio := float()
+      , rapid_payment_percentage := float()
+      , turnover := float()
+      , current_price_time := klsn:binstr()
+      , change_percentage := float()
+      , exchange_name := klsn:binstr()
+      , category_name := klsn:binstr()
+    }.
+
+% Variant for 信用情報 (Type 8-13)
+-type ranking_margin_entry() :: #{
+        no := non_neg_integer()
+      , symbol := klsn:binstr()
+      , symbol_name := klsn:binstr()
+      , sell_rapid_payment_percentage := float()
+      , sell_last_week_ratio := float()
+      , buy_rapid_payment_percentage := float()
+      , buy_last_week_ratio := float()
+      , ratio := float()
+      , exchange_name := klsn:binstr()
+      , category_name := klsn:binstr()
+    }.
+
+% Variant for 業種別指数 (Type 14-15)
+-type ranking_category_entry() :: #{
+        no := non_neg_integer()
+      , trend := klsn:binstr()
+      , average_ranking := float()
+      , category := klsn:binstr()
+      , category_name := klsn:binstr()
+      , current_price := float()
+      , change_ratio := float()
+      , current_price_time := klsn:binstr()
+      , change_percentage := float()
+    }.
+
+-type ranking_entry() ::
+        ranking_price_entry()
+      | ranking_tick_entry()
+      | ranking_trade_volume_entry()
+      | ranking_trade_value_entry()
+      | ranking_margin_entry()
+      | ranking_category_entry().
+
+-type ranking_result() :: #{
+        type := kabue_mufje_enum:ranking_type()
+      , exchange_division := kabue_mufje_enum:exchange_division()
+      , ranking := [ranking_entry()]
+    }.
+
+%%--------------------------------------------------------------------
+%% Typed structures for individual REST endpoints
+%%--------------------------------------------------------------------
+
+%% /symbol – components/schemas/SymbolSuccess
+-type symbol_info() :: #{
+        %% always present
+        symbol := klsn:binstr()
+      , symbol_name := klsn:binstr()
+
+        %% often present (stock/future/option depending on product)
+      , display_name        => klsn:binstr()
+      , exchange            => kabue_mufje_enum:exchange()
+      , exchange_name       => klsn:binstr()
+      , bis_category        => klsn:binstr()
+      , total_market_value  => float()
+      , total_stocks        => float()
+      , trading_unit        => float()
+      , fiscal_year_end_basic => integer()
+      , price_range_group     => klsn:binstr()
+      , kc_margin_buy          => float()
+      , kc_margin_sell         => float()
+      , margin_buy             => float()
+      , margin_sell            => float()
+      , upper_limit            => float()
+      , lower_limit            => float()
+      , underlyer              => klsn:binstr()
+      , deriv_month            => klsn:binstr()
+      , trade_start            => integer()
+      , trade_end              => integer()
+      , strike_price           => float()
+      , put_or_call            => integer()
+      , clearing_price         => float()
+    }.
+
+%% /exchange – components/schemas/ExchangeResponse
+-type exchange_info() :: #{
+        symbol := klsn:binstr()
+      , bid_price := float()
+      , ask_price := float()
+      , spread := float()
+      , change := float()
+      , time := klsn:binstr()
+    }.
+
+%% Common acknowledgement structure returned by send-order and cancel-order
+-type order_ack() :: #{
+        result := non_neg_integer()
+      , order_id := order_id()
+    }.
+
+-type sendorder_future_result()  :: order_ack().
+-type sendorder_option_result()  :: order_ack().
+-type cancelorder_result()       :: order_ack().
+
+%% /wallet/cash – components/schemas/WalletCashSuccess
+-type wallet_cash_result() :: #{
+        stock_account_wallet        := float()
+      , au_kc_stock_account_wallet  => float()
+      , au_jbn_stock_account_wallet => float()
+    }.
+
+%% /wallet/future – components/schemas/WalletFutureSuccess
+-type wallet_future_result() :: #{
+        future_trade_limit       := float()
+      , margin_requirement       => float()
+      , margin_requirement_sell  => float()
+    }.
+
+%% /wallet/margin – components/schemas/WalletMarginSuccess
+-type wallet_margin_result() :: #{
+        margin_account_wallet           := float()
+      , depositkeep_rate               => float()
+      , consignment_deposit_rate       => float()
+      , cash_of_consignment_deposit_rate => float()
+    }.
+
+%% /wallet/option – components/schemas/WalletOptionSuccess
+-type wallet_option_result() :: #{
+        option_buy_trade_limit  := float()
+      , option_sell_trade_limit := float()
+      , margin_requirement      => float()
+    }.
+
+%%--------------------------------------------------------------------
+%% Orders and positions
+%%--------------------------------------------------------------------
+
+%% Detail element inside the "Details" array (execution lines).  Typed very
+%% loosely for now—users typically treat it as opaque.
+-type order_execution_detail() :: map().
+
+%% Single order entry (components/schemas/OrdersSuccess)
+-type order_entry() :: #{
+        id := order_id()
+      , state := kabue_mufje_enum:order_status()
+      , order_state := kabue_mufje_enum:order_status()
+      , ord_type := term()
+      , recv_time := klsn:binstr()
+      , symbol := symbol()
+      , symbol_name := klsn:binstr()
+      , exchange := kabue_mufje_enum:exchange()
+      , exchange_name := klsn:binstr()
+      , time_in_force := term()
+      , price := float()
+      , order_qty := integer()
+      , cum_qty := integer()
+      , side := kabue_mufje_enum:side()
+      , cash_margin := kabue_mufje_enum:cash_margin()
+      , account_type := kabue_mufje_enum:account_type()
+      , deliv_type := kabue_mufje_enum:deliv_type()
+      , expire_day := integer()
+      , margin_trade_type := kabue_mufje_enum:margin_trade_type()
+      , margin_premium => float()
+      , details := [order_execution_detail()]
+    }.
+
+-type order_list_result()   :: [order_entry()].
+-type order_detail_result() :: [order_entry()].
+
+%% Single position entry (components/schemas/PositionsSuccess)
+-type position_entry() :: #{
+        execution_id := klsn:binstr()
+      , account_type := kabue_mufje_enum:account_type()
+      , symbol := symbol()
+      , symbol_name := klsn:binstr()
+      , exchange := kabue_mufje_enum:exchange()
+      , exchange_name := klsn:binstr()
+      , security_type := kabue_mufje_enum:security_type()
+      , execution_day := integer()
+      , price := float()
+      , leaves_qty := integer()
+      , hold_qty := integer()
+      , side := kabue_mufje_enum:side()
+      , expenses := float()
+      , commission := float()
+      , commission_tax := float()
+      , expire_day => integer()
+      , margin_trade_type => kabue_mufje_enum:margin_trade_type()
+      , current_price := float()
+      , valuation := float()
+      , profit_loss := float()
+      , profit_loss_rate := float()
+    }.
+
+-type position_list_result() :: [position_entry()].
+
+%%--------------------------------------------------------------------
+%% Wallet helpers
+%%--------------------------------------------------------------------
+
+-spec payload_to_wallet_cash(map()) -> wallet_cash_result().
+payload_to_wallet_cash(Doc) ->
+    klsn_map:filter(#{
+        stock_account_wallet         => klsn_map:lookup([<<"StockAccountWallet">>], Doc)
+      , au_kc_stock_account_wallet   => klsn_map:lookup([<<"AuKCStockAccountWallet">>], Doc)
+      , au_jbn_stock_account_wallet  => klsn_map:lookup([<<"AuJbnStockAccountWallet">>], Doc)
+    }).
+
+
+%% /wallet/future ------------------------------------------------------
+
+-spec payload_to_wallet_future(map()) -> wallet_future_result().
+payload_to_wallet_future(Doc) ->
+    klsn_map:filter(#{
+        future_trade_limit       => klsn_map:lookup([<<"FutureTradeLimit">>], Doc)
+      , margin_requirement       => klsn_map:lookup([<<"MarginRequirement">>], Doc)
+      , margin_requirement_sell  => klsn_map:lookup([<<"MarginRequirementSell">>], Doc)
+    }).
+
+
+%% /wallet/margin ------------------------------------------------------
+
+-spec payload_to_wallet_margin(map()) -> wallet_margin_result().
+payload_to_wallet_margin(Doc) ->
+    klsn_map:filter(#{
+        margin_account_wallet            => klsn_map:lookup([<<"MarginAccountWallet">>], Doc)
+      , depositkeep_rate                => klsn_map:lookup([<<"DepositkeepRate">>], Doc)
+      , consignment_deposit_rate        => klsn_map:lookup([<<"ConsignmentDepositRate">>], Doc)
+      , cash_of_consignment_deposit_rate => klsn_map:lookup([<<"CashOfConsignmentDepositRate">>], Doc)
+    }).
+
+
+%% /wallet/option ------------------------------------------------------
+
+-spec payload_to_wallet_option(map()) -> wallet_option_result().
+payload_to_wallet_option(Doc) ->
+    klsn_map:filter(#{
+        option_buy_trade_limit  => klsn_map:lookup([<<"OptionBuyTradeLimit">>], Doc)
+      , option_sell_trade_limit => klsn_map:lookup([<<"OptionSellTradeLimit">>], Doc)
+      , margin_requirement      => klsn_map:lookup([<<"MarginRequirement">>], Doc)
+    }).
+
+
+%%--------------------------------------------------------------------
+%% Orders & Positions helpers
+%%--------------------------------------------------------------------
+
+-spec payload_to_order_entry(map()) -> order_entry().
+payload_to_order_entry(Doc) ->
+    EnumExchange        = klsn_map:invert(kabue_mufje_enum:exchange()),
+    EnumSide            = klsn_map:invert(kabue_mufje_enum:side()),
+    EnumCashMargin      = klsn_map:invert(kabue_mufje_enum:cash_margin()),
+    EnumAccountType     = klsn_map:invert(kabue_mufje_enum:account_type()),
+    EnumDelivType       = klsn_map:invert(kabue_mufje_enum:deliv_type()),
+    EnumMarginTradeType = klsn_map:invert(kabue_mufje_enum:margin_trade_type()),
+    EnumOrderStatus     = klsn_map:invert(kabue_mufje_enum:order_status()),
+
+    Map0 = #{
+        id           => klsn_map:lookup([<<"ID">>], Doc)
+      , ord_type     => klsn_map:lookup([<<"OrdType">>], Doc)
+      , recv_time    => klsn_map:lookup([<<"RecvTime">>], Doc)
+      , symbol       => klsn_map:lookup([<<"Symbol">>], Doc)
+      , symbol_name  => klsn_map:lookup([<<"SymbolName">>], Doc)
+      , exchange_name=> klsn_map:lookup([<<"ExchangeName">>], Doc)
+      , time_in_force=> klsn_map:lookup([<<"TimeInForce">>], Doc)
+      , price        => klsn_map:lookup([<<"Price">>], Doc)
+      , order_qty    => klsn_map:lookup([<<"OrderQty">>], Doc)
+      , cum_qty      => klsn_map:lookup([<<"CumQty">>], Doc)
+      , deliv_type   => maybe_enum(<<"DelivType">>, Doc, EnumDelivType)
+      , expire_day   => klsn_map:lookup([<<"ExpireDay">>], Doc)
+      , margin_premium => klsn_map:lookup([<<"MarginPremium">>], Doc)
+      , details      => case klsn_map:lookup([<<"Details">>], Doc) of
+                            {value, Arr} when is_list(Arr) -> Arr;
+                            _ -> []
+                        end
+    },
+    klsn_map:filter(Map0#{
+        state        => maybe_enum(<<"State">>, Doc, EnumOrderStatus)
+      , order_state  => maybe_enum(<<"OrderState">>, Doc, EnumOrderStatus)
+      , exchange     => maybe_enum(<<"Exchange">>, Doc, EnumExchange)
+      , side         => maybe_enum(<<"Side">>, Doc, EnumSide)
+      , cash_margin  => maybe_enum(<<"CashMargin">>, Doc, EnumCashMargin)
+      , account_type => maybe_enum(<<"AccountType">>, Doc, EnumAccountType)
+      , margin_trade_type => maybe_enum(<<"MarginTradeType">>, Doc, EnumMarginTradeType)
+    }).
+
+-spec maybe_enum(binary(), map(), map()) -> klsn:maybe(term()).
+maybe_enum(Key, Doc, EnumInv) ->
+    case klsn_map:lookup([Key], Doc) of
+        {value, Code} -> klsn_map:lookup([Code], EnumInv);
+        none -> none
+    end.
+
+-spec payload_to_position_entry(map()) -> position_entry().
+payload_to_position_entry(Doc) ->
+    EnumExchange    = klsn_map:invert(kabue_mufje_enum:exchange()),
+    EnumSide        = klsn_map:invert(kabue_mufje_enum:side()),
+    EnumAccountType = klsn_map:invert(kabue_mufje_enum:account_type()),
+    EnumSecurity    = klsn_map:invert(kabue_mufje_enum:security_type()),
+
+    klsn_map:filter(#{
+        execution_id   => klsn_map:lookup([<<"ExecutionID">>], Doc)
+      , account_type   => maybe_enum(<<"AccountType">>, Doc, EnumAccountType)
+      , symbol         => klsn_map:lookup([<<"Symbol">>], Doc)
+      , symbol_name    => klsn_map:lookup([<<"SymbolName">>], Doc)
+      , exchange       => maybe_enum(<<"Exchange">>, Doc, EnumExchange)
+      , exchange_name  => klsn_map:lookup([<<"ExchangeName">>], Doc)
+      , security_type  => maybe_enum(<<"SecurityType">>, Doc, EnumSecurity)
+      , execution_day  => klsn_map:lookup([<<"ExecutionDay">>], Doc)
+      , price          => klsn_map:lookup([<<"Price">>], Doc)
+      , leaves_qty     => klsn_map:lookup([<<"LeavesQty">>], Doc)
+      , hold_qty       => klsn_map:lookup([<<"HoldQty">>], Doc)
+      , side           => maybe_enum(<<"Side">>, Doc, EnumSide)
+      , expenses       => klsn_map:lookup([<<"Expenses">>], Doc)
+      , commission     => klsn_map:lookup([<<"Commission">>], Doc)
+      , commission_tax => klsn_map:lookup([<<"CommissionTax">>], Doc)
+      , expire_day     => klsn_map:lookup([<<"ExpireDay">>], Doc)
+      , margin_trade_type => klsn_map:lookup([<<"MarginTradeType">>], Doc)
+      , current_price  => klsn_map:lookup([<<"CurrentPrice">>], Doc)
+      , valuation      => klsn_map:lookup([<<"Valuation">>], Doc)
+      , profit_loss    => klsn_map:lookup([<<"ProfitLoss">>], Doc)
+      , profit_loss_rate => klsn_map:lookup([<<"ProfitLossRate">>], Doc)
+    }).
+
+
+%%--------------------------------------------------------------------
+%% Internal helpers (REST-only)
+%%--------------------------------------------------------------------
+
+-spec payload_to_order_ack(map()) -> order_ack().
+payload_to_order_ack(#{<<"Result">> := Res, <<"OrderId">> := Id}) ->
+    #{result => Res, order_id => Id}.
+
 
 
 -spec ranking(
@@ -89,7 +507,7 @@
           , exchange_division => kabue_mufje_enum:exchange_division()
         }
       , options()
-    ) -> ok.
+    ) -> either(ranking_result()).
 ranking(ReqPayload0, Options) ->
     ReqQuery= maps:from_list(lists:filtermap(fun
         ({type, Type}) ->
@@ -100,11 +518,73 @@ ranking(ReqPayload0, Options) ->
             {true, {<<"ExchangeDivision">>, maps:get(ExchangeDivision, Enum)}};
         (_) -> false
     end, maps:to_list(ReqPayload0))),
-    request(#{
+    Res = request(#{
         uri => <<"/kabusapi/ranking">>
       , method => get
       , q => ReqQuery
-    } , Options).
+    } , Options),
+    case Res of
+        {right, Doc} ->
+            RankingList = lists:map(fun(Elem) ->
+                %% Build the entry map.
+                klsn_map:filter(#{
+                    %% Common keys -------------------------------------------------
+                    no                              => klsn_map:lookup([<<"No">>], Elem)
+                  , trend                           => klsn_map:lookup([<<"Trend">>], Elem)
+                  , average_ranking                 => klsn_map:lookup([<<"AverageRanking">>], Elem)
+                  , symbol                          => klsn_map:lookup([<<"Symbol">>], Elem)
+                  , symbol_name                     => klsn_map:lookup([<<"SymbolName">>], Elem)
+                  , current_price                   => klsn_map:lookup([<<"CurrentPrice">>], Elem)
+                  , change_ratio                    => klsn_map:lookup([<<"ChangeRatio">>], Elem)
+                  , change_percentage               => klsn_map:lookup([<<"ChangePercentage">>], Elem)
+                  , current_price_time              => klsn_map:lookup([<<"CurrentPriceTime">>], Elem)
+                  , trading_volume                  => klsn_map:lookup([<<"TradingVolume">>], Elem)
+                  , turnover                        => klsn_map:lookup([<<"Turnover">>], Elem)
+                  , exchange_name                   => klsn_map:lookup([<<"ExchangeName">>], Elem)
+                  , category_name                   => klsn_map:lookup([<<"CategoryName">>], Elem)
+
+                    %% TICK count specific ----------------------------------------
+                  , tick_count                      => klsn_map:lookup([<<"TickCount">>], Elem)
+                  , up_count                        => klsn_map:lookup([<<"UpCount">>], Elem)
+                  , down_count                      => klsn_map:lookup([<<"DownCount">>], Elem)
+
+                    %% Volume spike ------------------------------------------------
+                  , rapid_trade_percentage          => klsn_map:lookup([<<"RapidTradePercentage">>], Elem)
+
+                    %% Amount spike -------------------------------------------------
+                  , rapid_payment_percentage        => klsn_map:lookup([<<"RapidPaymentPercentage">>], Elem)
+
+                    %% Credit information -----------------------------------------
+                  , sell_rapid_payment_percentage   => klsn_map:lookup([<<"SellRapidPaymentPercentage">>], Elem)
+                  , sell_last_week_ratio            => klsn_map:lookup([<<"SellLastWeekRatio">>], Elem)
+                  , buy_rapid_payment_percentage    => klsn_map:lookup([<<"BuyRapidPaymentPercentage">>], Elem)
+                  , buy_last_week_ratio             => klsn_map:lookup([<<"BuyLastWeekRatio">>], Elem)
+                  , ratio                           => klsn_map:lookup([<<"Ratio">>], Elem)
+
+                    %% Industry index ---------------------------------------------
+                  , category                        => klsn_map:lookup([<<"Category">>], Elem)
+                })
+            end, maps:get(<<"Ranking">>, Doc)),
+            RankingResult = #{
+                type =>
+                    maps:get(
+                        maps:get(<<"Type">>, Doc),
+                        klsn_map:invert(kabue_mufje_enum:ranking_type())
+                    )
+              , exchange_division =>
+                    maps:get(
+                        maps:get(<<"ExchangeDivision">>, Doc),
+                        klsn_map:invert(kabue_mufje_enum:exchange_division())
+                    )
+              , ranking => RankingList
+            },
+            {right, RankingResult};
+        {left, Left} ->
+            {left, Left}
+    end.
+
+
+
 
 
 -spec order(
@@ -175,9 +655,10 @@ order(ReqPayload0, Options) ->
             Value = maps:get(ClosePositionOrder, Enum),
             {true, {<<"ClosePositionOrder">>, Value}};
         ({close_positions, ClosePositions}) ->
-            lists:map(fun(#{hold_id:=HoldID, qty:=Qty})->
-                #{<<"HoldID">> => HoldID, <<"Qty">> => Qty}
-            end, ClosePositions);
+            List = lists:map(fun(#{hold_id := HoldID, qty := Qty}) ->
+                        #{<<"HoldID">> => HoldID, <<"Qty">> => Qty}
+                    end, ClosePositions),
+            {true, {<<"ClosePositions">>, List}};
         ({front_order_type, FrontOrderType}) ->
             Enum = kabue_mufje_enum:front_order_type(),
             {true, {<<"FrontOrderType">>,  maps:get(FrontOrderType, Enum)}};
@@ -186,27 +667,26 @@ order(ReqPayload0, Options) ->
         ({expire_day, ExpireDay}) ->
             {true, {<<"ExpireDay">>, ExpireDay}};
         ({reverse_limit_order, ReverseLimitOrder}) ->
-            #{
+            Map = #{
                 <<"TriggerSec">> =>
                     maps:get(
-                        maps:get(trigger_sec, ReverseLimitOrder)
-                      , kabue_mufje_enum:trigger_sec()
+                        maps:get(trigger_sec, ReverseLimitOrder),
+                        kabue_mufje_enum:trigger_sec()
                     )
-              , <<"TriggerPrice">> =>
-                    maps:get(trigger_price, ReverseLimitOrder)
+              , <<"TriggerPrice">> => maps:get(trigger_price, ReverseLimitOrder)
               , <<"UnderOver">> =>
                     maps:get(
-                        maps:get(under_over, ReverseLimitOrder)
-                      , kabue_mufje_enum:under_over()
+                        maps:get(under_over, ReverseLimitOrder),
+                        kabue_mufje_enum:under_over()
                     )
               , <<"AfterHitOrderType">> =>
                     maps:get(
-                        maps:get(after_hit_order_type, ReverseLimitOrder)
-                      , kabue_mufje_enum:after_hit_order_type()
+                        maps:get(after_hit_order_type, ReverseLimitOrder),
+                        kabue_mufje_enum:after_hit_order_type()
                     )
-              , <<"AfterHitPrice">> =>
-                    maps:get(after_hit_price, ReverseLimitOrder)
-            };
+              , <<"AfterHitPrice">> => maps:get(after_hit_price, ReverseLimitOrder)
+            },
+            {true, {<<"ReverseLimitOrder">>, Map}};
         (_) -> false
     end, maps:to_list(ReqPayload0))),
     Res = request(#{
@@ -249,7 +729,7 @@ register(ReqPayload0, Options) ->
           , exchange => kabue_mufje_enum:exchange()
         }]
       , options()
-    ) -> either(ticker()).
+    ) -> either([ticker()]).
 unregister(ReqPayload0, Options) ->
     Symbols = lists:map(fun(Elem) ->
         #{
@@ -272,7 +752,7 @@ unregister_all(Options) ->
     } , Options)).
 
 
--spec parse_regist_list(either(payload())) -> either(ticker()).
+-spec parse_regist_list(either(payload())) -> either([ticker()]).
 parse_regist_list(Payload) ->
     case Payload of
         {right, #{<<"RegistList">>:=RegistList}} ->
@@ -307,8 +787,10 @@ board(#{symbol := SymbolBin, exchange := ExchangeAtom}, Options) ->
     end.
 
 
--spec symbol(ticker(), options()) -> either(payload()).
+-spec symbol(ticker(), options()) -> either(symbol_info()).
+
 symbol(#{symbol := SymbolBin, exchange := ExchangeAtom}, Options) ->
+    %% Build request URI
     ExchangeCode = maps:get(ExchangeAtom, kabue_mufje_enum:exchange()),
     Uri = iolist_to_binary([
         "/kabusapi/symbol/",
@@ -316,16 +798,79 @@ symbol(#{symbol := SymbolBin, exchange := ExchangeAtom}, Options) ->
         "@",
         klsn_binstr:from_any(ExchangeCode)
     ]),
-    request(#{uri => Uri, method => get}, Options).
+
+    %% Perform HTTP call then convert payload
+    case request(#{uri => Uri, method => get}, Options) of
+        {right, Doc} ->
+            EnumExchange = klsn_map:invert(kabue_mufje_enum:exchange()),
+
+            %% Helper to lift Maybe value after enum conversion
+            ExchangeMaybe =
+                case klsn_map:lookup([<<"Exchange">>], Doc) of
+                    {value, Code} -> klsn_map:lookup([Code], EnumExchange);
+                    none -> none
+                end,
+
+            SymbolInfo = klsn_map:filter(#{
+                %% required
+                symbol       => klsn_map:lookup([<<"Symbol">>], Doc)
+              , symbol_name  => klsn_map:lookup([<<"SymbolName">>], Doc)
+
+                %% optional direct transfers
+              , display_name        => klsn_map:lookup([<<"DisplayName">>], Doc)
+              , exchange_name       => klsn_map:lookup([<<"ExchangeName">>], Doc)
+              , bis_category        => klsn_map:lookup([<<"BisCategory">>], Doc)
+              , total_market_value  => klsn_map:lookup([<<"TotalMarketValue">>], Doc)
+              , total_stocks        => klsn_map:lookup([<<"TotalStocks">>], Doc)
+              , trading_unit        => klsn_map:lookup([<<"TradingUnit">>], Doc)
+              , fiscal_year_end_basic => klsn_map:lookup([<<"FiscalYearEndBasic">>], Doc)
+              , price_range_group     => klsn_map:lookup([<<"PriceRangeGroup">>], Doc)
+              , kc_margin_buy          => klsn_map:lookup([<<"KCMarginBuy">>], Doc)
+              , kc_margin_sell         => klsn_map:lookup([<<"KCMarginSell">>], Doc)
+              , margin_buy             => klsn_map:lookup([<<"MarginBuy">>], Doc)
+              , margin_sell            => klsn_map:lookup([<<"MarginSell">>], Doc)
+              , upper_limit            => klsn_map:lookup([<<"UpperLimit">>], Doc)
+              , lower_limit            => klsn_map:lookup([<<"LowerLimit">>], Doc)
+              , underlyer              => klsn_map:lookup([<<"Underlyer">>], Doc)
+              , deriv_month            => klsn_map:lookup([<<"DerivMonth">>], Doc)
+              , trade_start            => klsn_map:lookup([<<"TradeStart">>], Doc)
+              , trade_end              => klsn_map:lookup([<<"TradeEnd">>], Doc)
+              , strike_price           => klsn_map:lookup([<<"StrikePrice">>], Doc)
+              , put_or_call            => klsn_map:lookup([<<"PutOrCall">>], Doc)
+              , clearing_price         => klsn_map:lookup([<<"ClearingPrice">>], Doc)
+
+                %% converted field (exchange integer -> atom)
+              , exchange              => ExchangeMaybe
+            }),
+            {right, SymbolInfo};
+        {left, Left} ->
+            {left, Left}
+    end.
 
 
 
 
--spec exchange(kabue_mufje_enum:symbol(), options()) -> either(payload()).
+-spec exchange(kabue_mufje_enum:symbol(), options()) -> either(exchange_info()).
+
 exchange(SymbolAtom, Options) ->
+    %% Build URI from symbolic atom
     SymbolBin = maps:get(SymbolAtom, kabue_mufje_enum:symbol()),
     Uri = iolist_to_binary([<<"/kabusapi/exchange/">>, SymbolBin]),
-    request(#{uri => Uri, method => get}, Options).
+
+    case request(#{uri => Uri, method => get}, Options) of
+        {right, Doc} ->
+            ExchangeInfo = klsn_map:filter(#{
+                symbol     => klsn_map:lookup([<<"Symbol">>], Doc)
+              , bid_price  => klsn_map:lookup([<<"BidPrice">>], Doc)
+              , ask_price  => klsn_map:lookup([<<"AskPrice">>], Doc)
+              , spread     => klsn_map:lookup([<<"Spread">>], Doc)
+              , change     => klsn_map:lookup([<<"Change">>], Doc)
+              , time       => klsn_map:lookup([<<"Time">>], Doc)
+            }),
+            {right, ExchangeInfo};
+        {left, Left} ->
+            {left, Left}
+    end.
 
 
 -spec sendorder_future(
@@ -348,7 +893,8 @@ exchange(SymbolAtom, Options) ->
             }
         }
       , options()
-    ) -> either(payload()).
+    ) -> either(sendorder_future_result()).
+
 sendorder_future(ReqPayload0, Options) when is_map(ReqPayload0) ->
     Payload = maps:from_list(lists:filtermap(fun
         ({symbol, Symbol}) -> {true, {<<"Symbol">>, Symbol}};
@@ -371,11 +917,16 @@ sendorder_future(ReqPayload0, Options) when is_map(ReqPayload0) ->
             {true, {<<"ReverseLimitOrder">>, Map}};
         (_) -> false
     end, maps:to_list(ReqPayload0))),
-    request(#{
-        uri => <<"/kabusapi/sendorder/future">>
-      , method => post
-      , payload => Payload
-    }, Options).
+    case request(#{
+            uri => <<"/kabusapi/sendorder/future">>
+          , method => post
+          , payload => Payload
+        }, Options) of
+        {right, Doc} ->
+            {right, payload_to_order_ack(Doc)};
+        {left, Left} ->
+            {left, Left}
+    end.
 
 
 -spec sendorder_option(
@@ -398,7 +949,7 @@ sendorder_future(ReqPayload0, Options) when is_map(ReqPayload0) ->
             }
         }
       , options()
-    ) -> either(payload()).
+    ) -> either(sendorder_option_result()).
 sendorder_option(ReqPayload0, Options) when is_map(ReqPayload0) ->
     Payload = maps:from_list(lists:filtermap(fun
         ({symbol, Symbol}) -> {true, {<<"Symbol">>, Symbol}};
@@ -421,33 +972,43 @@ sendorder_option(ReqPayload0, Options) when is_map(ReqPayload0) ->
             {true, {<<"ReverseLimitOrder">>, Map}};
         (_) -> false
     end, maps:to_list(ReqPayload0))),
-    request(#{
-        uri => <<"/kabusapi/sendorder/option">>
-      , method => post
-      , payload => Payload
-    }, Options).
+    case request(#{
+            uri => <<"/kabusapi/sendorder/option">>
+          , method => post
+          , payload => Payload
+        }, Options) of
+        {right, Doc} -> {right, payload_to_order_ack(Doc)};
+        {left, Left} -> {left, Left}
+    end.
 
 
 -spec cancelorder(
         #{
             order_id := order_id()
         }
-      , options()) -> either(payload()).
+      , options()) -> either(cancelorder_result()).
 cancelorder(#{order_id := OrderId}, Options) ->
     Payload = #{ <<"OrderId">> => OrderId },
-    request(#{
-        uri => <<"/kabusapi/cancelorder">>
-      , method => put
-      , payload => Payload
-    }, Options).
+    case request(#{
+            uri => <<"/kabusapi/cancelorder">>
+          , method => put
+          , payload => Payload
+        }, Options) of
+        {right, Doc} -> {right, payload_to_order_ack(Doc)};
+        {left, Left} -> {left, Left}
+    end.
 
 
--spec wallet_cash(options()) -> either(payload()).
+-spec wallet_cash(options()) -> either(wallet_cash_result()).
+
 wallet_cash(Options) ->
-    request(#{uri => <<"/kabusapi/wallet/cash">>, method => get}, Options).
+    case request(#{uri => <<"/kabusapi/wallet/cash">>, method => get}, Options) of
+        {right, Doc} -> {right, payload_to_wallet_cash(Doc)};
+        {left, Left} -> {left, Left}
+    end.
 
 
--spec wallet_cash(ticker(), options()) -> either(payload()).
+-spec wallet_cash(ticker(), options()) -> either(wallet_cash_result()).
 wallet_cash(#{symbol := SymbolBin, exchange := ExchangeAtom}, Options) ->
     ExchangeCode = maps:get(ExchangeAtom, kabue_mufje_enum:exchange()),
     Path = iolist_to_binary([
@@ -456,15 +1017,22 @@ wallet_cash(#{symbol := SymbolBin, exchange := ExchangeAtom}, Options) ->
         "@",
         klsn_binstr:from_any(ExchangeCode)
     ]),
-    request(#{uri => Path, method => get}, Options).
+    case request(#{uri => Path, method => get}, Options) of
+        {right, Doc} -> {right, payload_to_wallet_cash(Doc)};
+        {left, Left} -> {left, Left}
+    end.
 
 
--spec wallet_future(options()) -> either(payload()).
+-spec wallet_future(options()) -> either(wallet_future_result()).
+
 wallet_future(Options) ->
-    request(#{uri => <<"/kabusapi/wallet/future">>, method => get}, Options).
+    case request(#{uri => <<"/kabusapi/wallet/future">>, method => get}, Options) of
+        {right, Doc} -> {right, payload_to_wallet_future(Doc)};
+        {left, Left} -> {left, Left}
+    end.
 
 
--spec wallet_future(ticker(), options()) -> either(payload()).
+-spec wallet_future(ticker(), options()) -> either(wallet_future_result()).
 wallet_future(#{symbol := SymbolBin, exchange := ExchangeAtom}, Options) ->
     ExchangeCode = maps:get(ExchangeAtom, kabue_mufje_enum:exchange()),
     Path = iolist_to_binary([
@@ -473,15 +1041,22 @@ wallet_future(#{symbol := SymbolBin, exchange := ExchangeAtom}, Options) ->
         "@",
         klsn_binstr:from_any(ExchangeCode)
     ]),
-    request(#{uri => Path, method => get}, Options).
+    case request(#{uri => Path, method => get}, Options) of
+        {right, Doc} -> {right, payload_to_wallet_future(Doc)};
+        {left, Left} -> {left, Left}
+    end.
 
 
--spec wallet_margin(options()) -> either(payload()).
+-spec wallet_margin(options()) -> either(wallet_margin_result()).
+
 wallet_margin(Options) ->
-    request(#{uri => <<"/kabusapi/wallet/margin">>, method => get}, Options).
+    case request(#{uri => <<"/kabusapi/wallet/margin">>, method => get}, Options) of
+        {right, Doc} -> {right, payload_to_wallet_margin(Doc)};
+        {left, Left} -> {left, Left}
+    end.
 
 
--spec wallet_margin(ticker(), options()) -> either(payload()).
+-spec wallet_margin(ticker(), options()) -> either(wallet_margin_result()).
 wallet_margin(#{symbol := SymbolBin, exchange := ExchangeAtom}, Options) ->
     ExchangeCode = maps:get(ExchangeAtom, kabue_mufje_enum:exchange()),
     Path = iolist_to_binary([
@@ -490,15 +1065,22 @@ wallet_margin(#{symbol := SymbolBin, exchange := ExchangeAtom}, Options) ->
         "@",
         klsn_binstr:from_any(ExchangeCode)
     ]),
-    request(#{uri => Path, method => get}, Options).
+    case request(#{uri => Path, method => get}, Options) of
+        {right, Doc} -> {right, payload_to_wallet_margin(Doc)};
+        {left, Left} -> {left, Left}
+    end.
 
 
--spec wallet_option(options()) -> either(payload()).
+-spec wallet_option(options()) -> either(wallet_option_result()).
+
 wallet_option(Options) ->
-    request(#{uri => <<"/kabusapi/wallet/option">>, method => get}, Options).
+    case request(#{uri => <<"/kabusapi/wallet/option">>, method => get}, Options) of
+        {right, Doc} -> {right, payload_to_wallet_option(Doc)};
+        {left, Left} -> {left, Left}
+    end.
 
 
--spec wallet_option(ticker(), options()) -> either(payload()).
+-spec wallet_option(ticker(), options()) -> either(wallet_option_result()).
 wallet_option(#{symbol := SymbolBin, exchange := ExchangeAtom}, Options) ->
     ExchangeCode = maps:get(ExchangeAtom, kabue_mufje_enum:exchange()),
     Path = iolist_to_binary([
@@ -507,7 +1089,10 @@ wallet_option(#{symbol := SymbolBin, exchange := ExchangeAtom}, Options) ->
         "@",
         klsn_binstr:from_any(ExchangeCode)
     ]),
-    request(#{uri => Path, method => get}, Options).
+    case request(#{uri => Path, method => get}, Options) of
+        {right, Doc} -> {right, payload_to_wallet_option(Doc)};
+        {left, Left} -> {left, Left}
+    end.
 
 
 
@@ -515,25 +1100,44 @@ wallet_option(#{symbol := SymbolBin, exchange := ExchangeAtom}, Options) ->
 
 -spec order_list(
         #{ product => kabue_mufje_enum:product() }
-      , options()) -> either(payload()).
+      , options()) -> either(order_list_result()).
+
 order_list(Query0, Options) when is_map(Query0) ->
     Q = maps:from_list(lists:filtermap(fun
         ({product, Product}) ->
             {true, {<<"product">>, maps:get(Product, kabue_mufje_enum:product())}};
         (_) -> false
     end, maps:to_list(Query0))),
-    request(#{uri => <<"/kabusapi/orders">>, method => get, q => Q}, Options).
+    case request(#{uri => <<"/kabusapi/orders">>, method => get, q => Q}, Options) of
+        {right, List} when is_list(List) ->
+            {right, lists:map(fun payload_to_order_entry/1, List)};
+        {right, Map} -> % single object (edge case)
+            {right, [payload_to_order_entry(Map)]};
+        {left, Left} -> {left, Left}
+    end.
 
 
--spec order_detail(order_id(), options()) -> either(payload()).
+-spec order_detail(order_id(), options()) -> either(order_detail_result()).
+
 order_detail(OrderIdBin, Options) ->
     Q = #{ <<"id">> => klsn_binstr:from_any(OrderIdBin) },
-    request(#{uri => <<"/kabusapi/orders">>, method => get, q => Q}, Options).
+    case request(#{uri => <<"/kabusapi/orders">>, method => get, q => Q}, Options) of
+        {right, List} when is_list(List) ->
+            {right, lists:map(fun payload_to_order_entry/1, List)};
+        {right, Map} -> {right, [payload_to_order_entry(Map)]};
+        {left, Left} -> {left, Left}
+    end.
 
 
--spec position_list(options()) -> either(payload()).
+-spec position_list(options()) -> either(position_list_result()).
+
 position_list(Options) ->
-    request(#{uri => <<"/kabusapi/positions">>, method => get}, Options).
+    case request(#{uri => <<"/kabusapi/positions">>, method => get}, Options) of
+        {right, List} when is_list(List) ->
+            {right, lists:map(fun payload_to_position_entry/1, List)};
+        {right, Map} -> {right, [payload_to_position_entry(Map)]};
+        {left, Left} -> {left, Left}
+    end.
 
 
 -spec token(options()) -> either(klsn:binstr()).
