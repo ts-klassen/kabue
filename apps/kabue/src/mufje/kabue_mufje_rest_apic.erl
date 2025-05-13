@@ -438,8 +438,10 @@ payload_to_order_entry(Doc) ->
       , expire_day   => klsn_map:lookup([<<"ExpireDay">>], Doc)
       , margin_premium => klsn_map:lookup([<<"MarginPremium">>], Doc)
       , details      => case klsn_map:lookup([<<"Details">>], Doc) of
-                            {value, Arr} when is_list(Arr) -> Arr;
-                            _ -> []
+                            {value, Arr} when is_list(Arr) ->
+                                {value, Arr};
+                            _ ->
+                                {value, []}
                         end
     },
     klsn_map:filter(Map0#{
@@ -606,7 +608,7 @@ ranking(ReqPayload0, Options) ->
               , qty := integer()
             }]
           , front_order_type := kabue_mufje_enum:front_order_type()
-          , price := float
+          , price := float()
           , expire_day := integer()
           , reverse_limit_order => #{
                 trigger_sec := kabue_mufje_enum:trigger_sec()
@@ -703,10 +705,7 @@ order(ReqPayload0, Options) ->
 
 
 -spec register(
-        [#{
-            symbol => symbol()
-          , exchange => kabue_mufje_enum:exchange()
-        }]
+        [ticker()]
       , options()
     ) -> either([ticker()]).
 register(ReqPayload0, Options) ->
@@ -724,10 +723,7 @@ register(ReqPayload0, Options) ->
 
 
 -spec unregister(
-        [#{
-            symbol => symbol()
-          , exchange => kabue_mufje_enum:exchange()
-        }]
+        [ticker()]
       , options()
     ) -> either([ticker()]).
 unregister(ReqPayload0, Options) ->
@@ -1111,8 +1107,6 @@ order_list(Query0, Options) when is_map(Query0) ->
     case request(#{uri => <<"/kabusapi/orders">>, method => get, q => Q}, Options) of
         {right, List} when is_list(List) ->
             {right, lists:map(fun payload_to_order_entry/1, List)};
-        {right, Map} -> % single object (edge case)
-            {right, [payload_to_order_entry(Map)]};
         {left, Left} -> {left, Left}
     end.
 
@@ -1124,7 +1118,6 @@ order_detail(OrderIdBin, Options) ->
     case request(#{uri => <<"/kabusapi/orders">>, method => get, q => Q}, Options) of
         {right, List} when is_list(List) ->
             {right, lists:map(fun payload_to_order_entry/1, List)};
-        {right, Map} -> {right, [payload_to_order_entry(Map)]};
         {left, Left} -> {left, Left}
     end.
 
@@ -1135,7 +1128,6 @@ position_list(Options) ->
     case request(#{uri => <<"/kabusapi/positions">>, method => get}, Options) of
         {right, List} when is_list(List) ->
             {right, lists:map(fun payload_to_position_entry/1, List)};
-        {right, Map} -> {right, [payload_to_position_entry(Map)]};
         {left, Left} -> {left, Left}
     end.
 

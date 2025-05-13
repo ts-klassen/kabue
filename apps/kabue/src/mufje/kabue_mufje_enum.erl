@@ -181,8 +181,8 @@
                      | topix      % TOPIX指数
                      .
 
--type under_over() :: below     % 以下
-                    | above     % 以上
+-type under_over() :: under     % 以下
+                    | over     % 以上
                     .
 
 -type after_hit_order_type() :: market    % 成行
@@ -443,8 +443,8 @@ trigger_sec() ->
 -spec under_over() -> maps:map(under_over(), integer()).
 under_over() ->
     #{
-        below => 1,
-        above => 2
+        under => 1,
+        over => 2
     }.
 
 -spec after_hit_order_type() -> maps:map(after_hit_order_type(), integer()).
