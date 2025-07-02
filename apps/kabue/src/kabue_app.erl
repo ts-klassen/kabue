@@ -26,6 +26,8 @@ start(_StartType, _StartArgs) ->
             {true, {"/kabue/static/[...]", cowboy_static, {priv_dir, kabue, "static"}}}
       ; (hello_world) ->
             {true, {"/kabue/hello-world", kabue_hello_world_handler, #{}}}
+      ; (rpc) ->
+            {true, {"/kabue/rpc/:id", kabue_rpc_handler, #{}}}
       ; (_) ->
             false
     end,
