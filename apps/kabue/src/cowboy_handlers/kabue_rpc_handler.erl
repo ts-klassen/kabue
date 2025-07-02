@@ -8,6 +8,7 @@
       , resource_exists/2
       , content_types_accepted/2
       , rpc/2
+      , allow_missing_post/2
     ]).
 
 %%----------------------------------------------------------------------
@@ -36,6 +37,17 @@ resource_exists(Req, State) ->
 %% We still expect the payload to be JSON and will attempt to decode it.
 content_types_accepted(Req, State) ->
     {[{'*', rpc}], Req, State}.
+
+%%----------------------------------------------------------------------
+%% POST to a *missing* RPC should not be allowed.
+%% The default (no callback) for allow_missing_post/2 is 'true', which would
+%% make Cowboy continue processing the request even when resource_exists/2
+%% returned false, eventually calling rpc/2 and crashing. We override it to
+%% 'false' so Cowboy responds 404 immediately.
+%%----------------------------------------------------------------------
+
+allow_missing_post(Req, State) ->
+    {false, Req, State}.
 
 
 %%----------------------------------------------------------------------
