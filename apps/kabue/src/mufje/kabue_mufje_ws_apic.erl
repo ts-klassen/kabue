@@ -177,6 +177,16 @@ handle_info({gun_ws, _Pid, Ref, {text, Text}}, State0) ->
     State40 = klsn_map:upsert([Mode, data, Ticker, current, timestamp], Timestamp, State30),
     State50 = klsn_map:upsert([Mode, last_updated_at], {value, Timestamp}, State40),
     State60 = klsn_map:upsert([Mode, last_websocket_at], {value, Timestamp}, State50),
+    %% ------------------------------------------------------------------
+    %% Persist board information to InfluxDB in a separate process to keep
+    %% the GenServer loop as lightweight as possible.
+    spawn(fun() ->
+        Point = board_to_point(Mode, Board, Timestamp),
+        {ok, Org} = application:get_env(kabue, influxdb_organization),
+        {ok, Bucket} = application:get_env(kabue, influxdb_bucket),
+        klsn_flux:write(Org, Bucket, Point)
+    end),
+    %% ------------------------------------------------------------------
     spawn(fun() ->
         lists:map(fun(SignalPid)->
             SignalPid ! {?MODULE, signal, {update, Mode, Ticker}}
@@ -277,6 +287,45 @@ flush_signal(Signal) ->
     after 0 ->
         ok
     end.
+
+
+%% ------------------------------------------------------------------
+%% InfluxDB helper
+%% ------------------------------------------------------------------
+
+-spec board_to_point(
+        mode()
+      , kabue_mufje_types:board()
+      , klsn_flux:timestamp()
+    ) -> klsn_flux:point().
+board_to_point(Mode, Board, Ts) ->
+    {ok, Profile} = application:get_env(kabue, profile),
+    {ok, Version} = application:get_env(kabue, version),
+    Tag = #{
+        profile => Profile,
+        version => Version,
+        mode => atom_to_binary(Mode, utf8),
+        symbol => maps:get(symbol, Board),
+        exchange => maps:get(exchange, Board)
+    },
+    Field = maps:from_list(lists:filtermap(fun({K, V}) ->
+        case V of
+            undefined -> false;
+            null -> false;
+            _ ->
+                Val1 = case V of
+                    A when is_atom(A) -> atom_to_binary(A, utf8);
+                    _ -> V
+                end,
+                {true, {K, Val1}}
+        end
+    end, maps:to_list(Board))),
+    #{
+        measurement => mufje_board,
+        tag => Tag,
+        field => Field,
+        timestamp => Ts
+    }.
 
 
 -spec lookup(mode(), kabue_mufje_rest_apic:ticker()) -> klsn:maybe(data()).
