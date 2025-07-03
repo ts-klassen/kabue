@@ -35,25 +35,13 @@ individual markdown files placed next to this one.
 
 ---
 
-### Common error response
+### Error handling
 
-All RPCs share the same error model used internally by the kabue code base:
+* Each RPC function is free to design its own **success / error payload**.
+* If an un-handled Erlang exception occurs inside the function, Cowboy will
+  automatically respond with **HTTP 500 Internal Server Error** and an empty
+  body.
 
-````jsonc
-{
-  "success": false,
-  "payload": { /* description or stack trace */ }
-}
-````
-
-However, many functions return `{left, Payload}` tuples internally and the
-handler currently **does not intercept** those.  Therefore the HTTP layer
-will still respond with *200* and the JSON body will directly be the Erlang
-tuple that the function returned, for example:
-
-```json
-["left", {"reason": "token_expired"}]
-```
-
-Treat any response that is not documented in the specification below as an
-internal error.
+In other words *application-level* errors are communicated by the individual
+function (and are documented in its dedicated markdown file), whereas
+unexpected crashes surface as HTTP 500.
