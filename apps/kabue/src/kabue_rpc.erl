@@ -4,6 +4,7 @@
         echo/1
       , board/1
       , quick_take/1
+      , wallet/1
       , order_list/1
       , panic_exit/1
     ]).
@@ -118,6 +119,17 @@ quick_take(#{<<"symbol">>:=Symbol}) ->
         order_id => OrderId
       , close_order_id => CloseOrderId
       , close_order_price => Price
+    }.
+
+
+wallet(#{}) ->
+    {right, Token} = kabue_mufje_rest_apic:token(#{ mode => real}),
+    Options = #{ mode => real, print_left_info_msg => true, token => Token },
+    {right, Cash} = kabue_mufje_rest_apic:wallet_cash(Options),
+    {right, Margin} = kabue_mufje_rest_apic:wallet_margin(Options),
+    #{
+        cash => Cash
+      , margin => Margin
     }.
 
 
@@ -239,8 +251,13 @@ panic_exit(#{}) ->
         ({left, Payload}) ->
             #{success => false, payload => Payload}
     end,
+    Success = lists:all(fun
+        ({righe, _}) -> true;
+        ({left, _}) -> false
+    end, IdsToCancel ++ ExitList),
     #{
-        cancel_list => IdsToCancel
+        success => Success
+      , cancel_list => IdsToCancel
       , exit_list => ExitList
       , cancel_result => lists:map(Either2Success, CancelResult)
       , exit_result => lists:map(Either2Success, ExitResult)
