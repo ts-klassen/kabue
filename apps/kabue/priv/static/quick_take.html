@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>quick_take</title>
+    <style>
+      /* --- Layout --- */
+      html, body {
+        margin: 0;
+        height: 100%;
+        font-family: sans-serif;
+        display: flex;
+        flex-direction: column;
+      }
+
+      header {
+        background: #222;
+        color: #fff;
+        padding: 0.8rem 1rem;
+        flex: 0 0 auto;
+      }
+
+      main {
+        flex: 1 1 auto;
+        overflow: auto;
+        padding: 1rem;
+        background: #f5f5f5;
+      }
+
+      footer {
+        background: #ddd;
+        padding: 0.8rem 1rem;
+        flex: 0 0 auto;
+        display: flex;
+        justify-content: space-between;
+      }
+
+      /* --- Buttons --- */
+      button {
+        padding: 0.6rem 1.2rem;
+        font-size: 1rem;
+        cursor: pointer;
+        border: none;
+        border-radius: 4px;
+      }
+
+      #quickTakeBtn { background: #4CAF50; color: #fff; }
+      #panicExitBtn  { background: #f44336; color: #fff; }
+
+      /* Simple area to show board JSON */
+      pre {
+        white-space: pre-wrap;
+        word-break: break-all;
+        background: #fff;
+        border: 1px solid #ccc;
+        padding: 1rem;
+        border-radius: 4px;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1 style="margin:0">quick_take</h1>
+    </header>
+
+    <main>
+      <h2>Board</h2>
+      <pre id="board">Loading board...</pre>
+    </main>
+
+    <footer>
+      <button id="quickTakeBtn">quick_take</button>
+      <button id="panicExitBtn">panic_exit</button>
+    </footer>
+
+    <script>
+      // Default symbol used for quick_take and board RPC calls.
+      const DEFAULT_SYMBOL = "1459";
+
+      // ---------- RPC Helpers ----------
+      function postRpc(path, payload) {
+        return fetch(`/kabue/rpc/${path}` , {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify(payload)
+        }).then(r => {
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          return r.json();
+        });
+      }
+
+      // ---------- Board Refresh ----------
+      const boardEl = document.getElementById("board");
+
+      function refreshBoard() {
+        postRpc("board", {symbol: DEFAULT_SYMBOL})
+          .then(data => {
+            boardEl.textContent = JSON.stringify(data, null, 2);
+          })
+          .catch(err => {
+            boardEl.textContent = `Error fetching board: ${err}`;
+          });
+      }
+
+      // Refresh immediately and then every 3 seconds.
+      refreshBoard();
+      setInterval(refreshBoard, 3000);
+
+      // ---------- Button Actions ----------
+      document.getElementById("quickTakeBtn").addEventListener("click", () => {
+        postRpc("quick_take", {symbol: DEFAULT_SYMBOL})
+          .then(data => {
+            alert("quick_take result:\n" + JSON.stringify(data, null, 2));
+          })
+          .catch(err => {
+            alert("quick_take failed: " + err);
+          });
+      });
+
+      document.getElementById("panicExitBtn").addEventListener("click", () => {
+        if (!confirm("Are you sure you want to PANIC EXIT?")) return;
+        postRpc("panic_exit", {})
+          .then(data => {
+            alert("panic_exit result:\n" + JSON.stringify(data, null, 2));
+          })
+          .catch(err => {
+            alert("panic_exit failed: " + err);
+          });
+      });
+    </script>
+  </body>
+</html>
