@@ -463,9 +463,7 @@
           });
       }
 
-      // declarations above; now safe to call
-      refreshWallet();
-      setInterval(refreshWallet, 30000);
+      // No automatic wallet refresh; user must click button.
 
       // ---------- Order List ----------
       function buildOrderTable(orderList) {
@@ -566,13 +564,11 @@
           });
       }
 
-      refreshOrderList();
-      setInterval(refreshOrderList, 30000);
-
       orderListRefreshBtn.addEventListener("click", () => {
         refreshOrderList();
         showMessage("Orders refreshed", "success");
       });
+      // No automatic order list refresh; user must click button.
 
       // ---------- Button Actions ----------
 
