@@ -29,6 +29,7 @@ with **404 Not Found**.
 | `quick_take` | *Demo/utility*: buys 1 share of 1459 and immediately places a take-profit order |
 | `wallet`     | Retrieves cash & margin wallet information |
 | `order_list` | Lists current orders and groups their IDs by filled state |
+| `position_list` | Returns the current list of open positions |
 | `panic_exit` | Cancels all open orders **and** immediately closes all positions |
 
 Detailed request / response specification for every RPC is available in the
