@@ -5,6 +5,7 @@
       , board/1
       , quick_take/1
       , wallet/1
+      , position_list/1
       , order_list/1
       , panic_exit/1
     ]).
@@ -130,6 +131,15 @@ wallet(#{}) ->
     #{
         cash => Cash
       , margin => Margin
+    }.
+
+
+position_list(#{}) ->
+    {right, Token} = kabue_mufje_rest_apic:token(#{ mode => real}),
+    Options = #{ mode => real, print_left_info_msg => true, token => Token },
+    {right, PositionList} = kabue_mufje_rest_apic:position_list(Options),
+    #{
+        position_list => PositionList
     }.
 
 
