@@ -262,7 +262,7 @@ panic_exit(#{}) ->
             #{success => false, payload => Payload}
     end,
     Success = lists:all(fun
-        ({righe, _}) -> true;
+        ({right, _}) -> true;
         ({left, _}) -> false
     end, CancelResult ++ ExitResult),
     #{
