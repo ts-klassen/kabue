@@ -151,6 +151,13 @@
         color: #fff;
       }
 
+      #positionListRefreshBtn {
+        background: #2196f3;
+        color: #fff;
+      }
+
+      #positionListInfo { overflow-x: auto; }
+
       #orderListInfo {
         overflow-x: auto;
       }
@@ -260,7 +267,7 @@
       <h2>Positions</h2>
       <div id="positionListSection" style="background:#f7fff8;border:1px solid #ddd;padding:1rem;border-radius:6px;margin-top:1.5rem;">
         <div style="margin-bottom:0.5rem;display:flex;align-items:center;gap:1rem;flex-wrap:wrap;">
-          <button id="positionListRefreshBtn" style="background:#4caf50;color:#fff;">Refresh Positions</button>
+          <button id="positionListRefreshBtn">Refresh Positions</button>
           <span style="font-size:0.85rem;color:#555;">Open positions snapshot</span>
         </div>
         <div id="positionListInfo"></div>
@@ -588,12 +595,9 @@
           return p;
         }
 
-        // Gather columns set
-        const allKeys = new Set();
-        posList.forEach(p => Object.keys(p).forEach(k => allKeys.add(k)));
-
-        const important = ["symbol","side","qty","leaves_qty","price","profit_loss"];
-        const columns = [...important.filter(k => allKeys.has(k)), ...Array.from(allKeys).filter(k => !important.includes(k)).sort()];
+        const columns = [
+          "execution_id","account_type","symbol","symbol_name","exchange","exchange_name","security_type","execution_day","price","leaves_qty","hold_qty","side","expenses","commission","commission_tax","expire_day","margin_trade_type","current_price","valuation","profit_loss","profit_loss_rate"
+        ];
 
         const tbl = document.createElement("table");
         tbl.className = "orderlist";
@@ -606,10 +610,10 @@
 
         const tbody = document.createElement("tbody");
         posList.forEach(p => {
-          const tr=document.createElement("tr");
-          columns.forEach(col=>{
-            const td=document.createElement("td");
-            const v=p[col];
+          const tr = document.createElement("tr");
+          columns.forEach(col => {
+            const td = document.createElement("td");
+            const v = p[col];
             td.textContent = typeof v === "number" ? v.toLocaleString() : (v ?? "");
             tr.appendChild(td);
           });
