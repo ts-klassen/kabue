@@ -59,6 +59,102 @@
       .msg.success { background:#4caf50; }
       .msg.error   { background:#f44336; }
 
+      /* Wallet section */
+      #walletSection {
+        background:#fafafa;
+        border:1px solid #ddd;
+        padding:1rem;
+        border-radius:6px;
+        max-width:600px;
+      }
+
+      table.wallet {
+        border-collapse:collapse;
+        margin-top:0.5rem;
+        margin-right:1.5rem;
+        display:inline-block;
+      }
+      table.wallet th, table.wallet td {
+        border:1px solid #ccc;
+        padding:0.4rem 0.6rem;
+        text-align:right;
+        font-family:monospace;
+        font-size:0.85rem;
+      }
+      table.wallet th {
+        background:#e8e8e8;
+        text-align:left;
+      }
+
+      /* Order list */
+      #orderListSection {
+        background:#fffdf7;
+        border:1px solid #ddd;
+        padding:1rem;
+        border-radius:6px;
+        margin-top:1.5rem;
+      }
+
+      table.orderlist {
+        width:100%;
+        border-collapse:collapse;
+        margin-top:0.5rem;
+        font-size:0.85rem;
+      }
+
+      table.orderlist {
+        table-layout: auto;
+        max-width:100%;
+      }
+
+      table.orderlist th, table.orderlist td {
+        border:1px solid #ccc;
+        padding:0.3rem 0.4rem;
+        text-align:right;
+        font-family:monospace;
+        white-space:normal;
+      }
+
+      /* Vertical separator between parent fields and detail fields */
+      .detail-sep {
+        border-left: 4px solid #000 !important;
+      }
+
+      /* Horizontal separator between different order ids */
+      tr.id-sep td {
+        border-top: 4px solid #000;
+      }
+
+      table.kv {
+        border-collapse:collapse;
+        margin-top:0.3rem;
+      }
+      table.kv th, table.kv td {
+        border:1px solid #ddd;
+        padding:0.2rem 0.4rem;
+        font-size:0.75rem;
+        text-align:left;
+        white-space:normal;
+      }
+
+      table.orderlist th { background:#f0f0f0; text-align:left; }
+
+      /* details content */
+      details pre {
+        margin:0.2rem 0 0 0;
+        white-space:pre-wrap;
+        max-width:500px;
+      }
+
+      #orderListRefreshBtn {
+        background: #2196f3;
+        color: #fff;
+      }
+
+      #orderListInfo {
+        overflow-x: auto;
+      }
+
       /* Modal styles */
       #modalOverlay {
         position: fixed;
@@ -104,6 +200,7 @@
 
       #quickTakeBtn { background: #4CAF50; color: #fff; }
       #panicExitBtn  { background: #f44336; color: #fff; }
+      #walletRefreshBtn { background: #2196f3; color: #fff; }
 
       /* Simple area to show board JSON */
       pre {
@@ -150,6 +247,24 @@
     <main>
       <h2>Board</h2>
       <div id="board">Loading board...</div>
+
+      <h2>Wallet</h2>
+      <div id="walletSection">
+        <div style="margin-bottom:0.5rem;display:flex;align-items:center;gap:1rem;flex-wrap:wrap;">
+          <button id="walletRefreshBtn">Refresh Wallet</button>
+          <span style="font-size:0.85rem;color:#555;">Snapshot of cash & margin accounts</span>
+        </div>
+        <div id="walletInfo"></div>
+      </div>
+
+      <h2>Orders</h2>
+      <div id="orderListSection">
+        <div style="margin-bottom:0.5rem;display:flex;align-items:center;gap:1rem;flex-wrap:wrap;">
+          <button id="orderListRefreshBtn">Refresh Orders</button>
+          <span style="font-size:0.85rem;color:#555;">Active & historical order snapshot</span>
+        </div>
+        <div id="orderListInfo"></div>
+      </div>
     </main>
 
     <div id="messages"></div>
@@ -185,6 +300,11 @@
 
       // ---------- Board Refresh ----------
       const boardContainer = document.getElementById("board");
+      const msgContainer = document.getElementById("messages");
+      const walletInfoEl = document.getElementById("walletInfo");
+      const walletRefreshBtn = document.getElementById("walletRefreshBtn");
+      const orderListRefreshBtn = document.getElementById("orderListRefreshBtn");
+      const orderListInfoEl = document.getElementById("orderListInfo");
 
       function buildBoardTable(board, changedKeys = new Set()) {
         // Extract rows {side, level, time, price}
@@ -296,8 +416,170 @@
       // initial fetch
       refreshBoard();
 
+      // ---------- Wallet Info ----------
+      function refreshWallet() {
+        postRpc("wallet", {})
+          .then(data => {
+            walletInfoEl.innerHTML = "";
+
+            function buildRows(map) {
+              return Object.entries(map || {}).map(([k,v]) => {
+                const tr = document.createElement("tr");
+                const th = document.createElement("th");
+                th.textContent = k;
+                const td = document.createElement("td");
+                td.textContent = (typeof v === "number" ? v.toLocaleString() : v);
+                tr.appendChild(th);
+                tr.appendChild(td);
+                return tr;
+              });
+            }
+
+            const tbl = document.createElement("table");
+            tbl.className = "wallet";
+
+            const cashCaption = document.createElement("caption");
+            cashCaption.textContent = "Cash Wallet";
+            cashCaption.style.textAlign = "left";
+            cashCaption.style.fontWeight = "bold";
+            tbl.appendChild(cashCaption);
+
+            buildRows(data?.cash).forEach(tr => tbl.appendChild(tr));
+
+            const tbl2 = document.createElement("table");
+            tbl2.className = "wallet";
+            const marginCaption = document.createElement("caption");
+            marginCaption.textContent = "Margin Wallet";
+            marginCaption.style.textAlign = "left";
+            marginCaption.style.fontWeight = "bold";
+            tbl2.appendChild(marginCaption);
+            buildRows(data?.margin).forEach(tr => tbl2.appendChild(tr));
+
+            walletInfoEl.appendChild(tbl);
+            walletInfoEl.appendChild(tbl2);
+          })
+          .catch(() => {
+            walletInfoEl.textContent = "Wallet: N/A";
+          });
+      }
+
+      // declarations above; now safe to call
+      refreshWallet();
+      setInterval(refreshWallet, 30000);
+
+      // ---------- Order List ----------
+      function buildOrderTable(orderList) {
+        if (!Array.isArray(orderList) || orderList.length === 0) {
+          const p = document.createElement("p");
+          p.textContent = "No orders.";
+          return p;
+        }
+
+        // Step 1: Fixed column order lists (parent block then detail block)
+        const parentColumns = [
+          "id","state","order_state","ord_type","recv_time","symbol","symbol_name","exchange","exchange_name","time_in_force","price","order_qty","cum_qty","side","cash_margin","account_type","deliv_type","expire_day","margin_trade_type","margin_premium"
+        ];
+
+        const detailColumns = [
+          "seq_num","id","rec_type","exchange_id","state","transact_time","ord_type","price","qty","execution_id","execution_day","deliv_day","commission","commission_tax"
+        ];
+
+        const columns = [...parentColumns, ...detailColumns];
+        const firstDetailCol = detailColumns[0];
+
+        // Step 2: flatten rows keeping blocks separate
+        const rows = [];
+        orderList.forEach(order => {
+          const base = { ...order };
+          delete base.details;
+
+          const arr = Array.isArray(order.details) && order.details.length > 0 ? order.details : [{}];
+          arr.forEach(det => {
+            const detCopy = { ...det };
+            if (detCopy.id !== undefined) {
+              detCopy.execution_id = detCopy.id;
+            }
+            rows.push({ p: base, d: detCopy });
+          });
+        });
+
+        // Step 3: build table
+        const tbl = document.createElement("table");
+        tbl.className = "orderlist";
+
+        const thead = document.createElement("thead");
+        const headRow = document.createElement("tr");
+        columns.forEach(col => {
+          const th = document.createElement("th");
+          th.textContent = col;
+          if (col === firstDetailCol) th.classList.add('detail-sep');
+          headRow.appendChild(th);
+        });
+        thead.appendChild(headRow);
+        tbl.appendChild(thead);
+
+        const tbody = document.createElement("tbody");
+        let prevOrderId = null;
+        rows.forEach(row => {
+          const tr = document.createElement("tr");
+
+          if (row.p.id !== prevOrderId && prevOrderId !== null) {
+            tr.classList.add('id-sep');
+          }
+
+          prevOrderId = row.p.id;
+          columns.forEach((col, idxCol) => {
+            const td = document.createElement("td");
+            if (col === firstDetailCol) td.classList.add('detail-sep');
+
+            const val = idxCol < parentColumns.length ? row.p[col] : row.d[col];
+            if (val && typeof val === "object") {
+              td.appendChild(makeDetails(val));
+            } else {
+              td.textContent = typeof val === "number" ? val.toLocaleString() : (val ?? "");
+            }
+            tr.appendChild(td);
+          });
+
+          tbody.appendChild(tr);
+        });
+        tbl.appendChild(tbody);
+        return tbl;
+      }
+
+      function refreshOrderList() {
+        postRpc("order_list", {})
+          .then(data => {
+            orderListInfoEl.innerHTML = "";
+            orderListInfoEl.appendChild(buildOrderTable(data?.order_list || []));
+
+            if (data?.id_buckets) {
+              const p = document.createElement("p");
+              p.style.fontSize = "0.8rem";
+              p.style.color = "#555";
+              p.textContent = `IDs buckets: all(${data.id_buckets.all?.length||0}), partial(${data.id_buckets.partial?.length||0}), none(${data.id_buckets.none?.length||0})`;
+              orderListInfoEl.appendChild(p);
+            }
+          })
+          .catch(err => {
+            orderListInfoEl.textContent = `Failed to fetch orders: ${err}`;
+          });
+      }
+
+      refreshOrderList();
+      setInterval(refreshOrderList, 30000);
+
+      orderListRefreshBtn.addEventListener("click", () => {
+        refreshOrderList();
+        showMessage("Orders refreshed", "success");
+      });
+
       // ---------- Button Actions ----------
-      const msgContainer = document.getElementById("messages");
+
+      walletRefreshBtn.addEventListener("click", () => {
+        refreshWallet();
+        showMessage("Wallet refreshed", "success");
+      });
 
       function showMessage(text, type = "success") {
         const div = document.createElement("div");
@@ -316,6 +598,34 @@
       modalOverlay.querySelector("button.close").addEventListener("click", () => {
         modalOverlay.style.display = "none";
       });
+
+      function makeDetails(obj) {
+        const detailsEl = document.createElement("details");
+        const summaryEl = document.createElement("summary");
+        summaryEl.textContent = `{…}(${Object.keys(obj || {}).length})`;
+
+        // Build key-value table instead of raw JSON
+        const kvTable = document.createElement("table");
+        kvTable.className = "kv";
+        Object.entries(obj || {}).forEach(([k,v]) => {
+          const tr = document.createElement("tr");
+          const th = document.createElement("th");
+          th.textContent = k;
+          const td = document.createElement("td");
+          if (v && typeof v === "object") {
+            td.appendChild(makeDetails(v));
+          } else {
+            td.textContent = typeof v === "number" ? v.toLocaleString() : v;
+          }
+          tr.appendChild(th);
+          tr.appendChild(td);
+          kvTable.appendChild(tr);
+        });
+
+        detailsEl.appendChild(summaryEl);
+        detailsEl.appendChild(kvTable);
+        return detailsEl;
+      }
 
       function showModal(dataObj) {
         modalContent.textContent = JSON.stringify(dataObj, null, 2);
