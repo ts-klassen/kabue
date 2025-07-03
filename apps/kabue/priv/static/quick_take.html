@@ -257,6 +257,15 @@
         <div id="walletInfo"></div>
       </div>
 
+      <h2>Positions</h2>
+      <div id="positionListSection" style="background:#f7fff8;border:1px solid #ddd;padding:1rem;border-radius:6px;margin-top:1.5rem;">
+        <div style="margin-bottom:0.5rem;display:flex;align-items:center;gap:1rem;flex-wrap:wrap;">
+          <button id="positionListRefreshBtn" style="background:#4caf50;color:#fff;">Refresh Positions</button>
+          <span style="font-size:0.85rem;color:#555;">Open positions snapshot</span>
+        </div>
+        <div id="positionListInfo"></div>
+      </div>
+
       <h2>Orders</h2>
       <div id="orderListSection">
         <div style="margin-bottom:0.5rem;display:flex;align-items:center;gap:1rem;flex-wrap:wrap;">
@@ -305,6 +314,8 @@
       const walletRefreshBtn = document.getElementById("walletRefreshBtn");
       const orderListRefreshBtn = document.getElementById("orderListRefreshBtn");
       const orderListInfoEl = document.getElementById("orderListInfo");
+      const positionListRefreshBtn = document.getElementById("positionListRefreshBtn");
+      const positionListInfoEl = document.getElementById("positionListInfo");
 
       function buildBoardTable(board, changedKeys = new Set()) {
         // Extract rows {side, level, time, price}
@@ -567,6 +578,62 @@
       orderListRefreshBtn.addEventListener("click", () => {
         refreshOrderList();
         showMessage("Orders refreshed", "success");
+      });
+
+      // ---------- Position List ----------
+      function buildPositionTable(posList) {
+        if (!Array.isArray(posList) || posList.length === 0) {
+          const p = document.createElement("p");
+          p.textContent = "No positions.";
+          return p;
+        }
+
+        // Gather columns set
+        const allKeys = new Set();
+        posList.forEach(p => Object.keys(p).forEach(k => allKeys.add(k)));
+
+        const important = ["symbol","side","qty","leaves_qty","price","profit_loss"];
+        const columns = [...important.filter(k => allKeys.has(k)), ...Array.from(allKeys).filter(k => !important.includes(k)).sort()];
+
+        const tbl = document.createElement("table");
+        tbl.className = "orderlist";
+
+        const thead = document.createElement("thead");
+        const trHead = document.createElement("tr");
+        columns.forEach(k => { const th=document.createElement("th"); th.textContent=k; trHead.appendChild(th); });
+        thead.appendChild(trHead);
+        tbl.appendChild(thead);
+
+        const tbody = document.createElement("tbody");
+        posList.forEach(p => {
+          const tr=document.createElement("tr");
+          columns.forEach(col=>{
+            const td=document.createElement("td");
+            const v=p[col];
+            td.textContent = typeof v === "number" ? v.toLocaleString() : (v ?? "");
+            tr.appendChild(td);
+          });
+          tbody.appendChild(tr);
+        });
+        tbl.appendChild(tbody);
+        return tbl;
+      }
+
+      function refreshPositionList() {
+        postRpc("position_list", {})
+          .then(data => {
+            const list = Array.isArray(data) ? data : (data?.position_list || data);
+            positionListInfoEl.innerHTML = "";
+            positionListInfoEl.appendChild(buildPositionTable(list));
+          })
+          .catch(err => {
+            positionListInfoEl.textContent = `Failed to fetch positions: ${err}`;
+          });
+      }
+
+      positionListRefreshBtn.addEventListener("click", () => {
+        refreshPositionList();
+        showMessage("Positions refreshed", "success");
       });
       // No automatic order list refresh; user must click button.
 
