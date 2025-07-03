@@ -264,7 +264,7 @@ panic_exit(#{}) ->
     Success = lists:all(fun
         ({righe, _}) -> true;
         ({left, _}) -> false
-    end, IdsToCancel ++ ExitList),
+    end, CancelResult ++ ExitResult),
     #{
         success => Success
       , cancel_list => IdsToCancel
