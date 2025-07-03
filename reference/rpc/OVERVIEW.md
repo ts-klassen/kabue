@@ -27,6 +27,7 @@ with **404 Not Found**.
 | `echo` | Echos back the request payload. Mainly for connectivity test |
 | `board` | Returns board (order-book) information for one symbol |
 | `quick_take` | *Demo/utility*: buys 1 share of 1459 and immediately places a take-profit order |
+| `wallet`     | Retrieves cash & margin wallet information |
 | `order_list` | Lists current orders and groups their IDs by filled state |
 | `panic_exit` | Cancels all open orders **and** immediately closes all positions |
 

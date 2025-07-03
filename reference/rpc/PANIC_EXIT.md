@@ -29,6 +29,7 @@ Send an empty object:
 
 ```jsonc
 {
+  "success": false,                    // true when *all* operations succeed
   "cancel_list": ["202504240001", "202504240002"],
   "exit_list": [ /* order objects used for close-out */ ],
   "cancel_result": [
@@ -41,8 +42,10 @@ Send an empty object:
 }
 ```
 
-* Each element in `cancel_result` / `exit_result` is created from an `either`
-  tuple returned by the underlying library:
+* `success` summarizes the overall outcome – it is `true` only when **all**
+  cancellations **and** all market-exit orders were accepted successfully.
+* Each element in `cancel_result` / `exit_result` is created from an
+  `either` tuple returned by the underlying library:
   * `success = true`   → `{right, Payload}`
   * `success = false`  → `{left,  Payload}`
 
