@@ -23,6 +23,7 @@ allowed_methods(Req, State) ->
 
 %% Verify the rpc function exists. If not, return 404.
 resource_exists(Req=#{bindings := #{id := IdBin}}, State) ->
+    catch kabue_rpc:echo([]),
     Exists = case try_binary_to_existing_atom(IdBin) of
         {ok, IdAtom} ->
             erlang:function_exported(kabue_rpc, IdAtom, 1);
