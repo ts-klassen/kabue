@@ -1,8 +1,8 @@
 # Kabue RPC API – Overview
 
-Kabue exposes a small **RPC style** HTTP endpoint that allows the front-end
-or automation scripts to invoke server side functions that are **not** part of
-the official kabu ステーション REST / WebSocket API.
+Kabue exposes a small **RPC-style** HTTP endpoint that allows front-end code
+or automation scripts to invoke server-side functions that are **not** part of
+the official **kabu Station** REST / WebSocket API.
 
 *   Base URL (default build): `http://<host>:<port>/kabue/rpc/{id}`
 *   HTTP Method: **POST** *(only)*

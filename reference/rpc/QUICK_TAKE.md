@@ -1,22 +1,28 @@
-# `quick_take` – One-shot day-trade helper (demo)
+# `quick_take` – Proof-of-concept day-trade helper
 
 ```
 POST /kabue/rpc/quick_take
 ```
 
-> **⚠️ 警告**: 実際に **成行**で買い注文を発注し、その後すぐに利確注文（指値）を置く *デモユーティリティ* です。運用環境での使用は推奨しません。コード上では銘柄 **1459** がハードコーディングされています。
+> ⚠️ **WARNING** – This RPC **executes live orders**: it buys 1 share of the
+> ETF **1459** at market, then immediately places a take-profit sell order at
+> *buy-price + 1 JPY*.  The symbol, quantity and profit distance are
+> hard-coded.  Use only in a test environment or at your own risk.
 
-## 機能概要
+## What the function does
 
-1. `1459` を 1 株 **成行買い**します。
-2. 約定価格 + 1 円で **指値売り**（建玉返済）を即座に発注します。
-3. 注文 ID などを返却します。
+1. Submits a **market buy** for symbol `1459` (cash equity, margin day-trade).
+2. Waits one second and fetches the order detail to obtain the executed price.
+3. Calculates `price + 1`-JPY and submits a **sell (repay)** order of type
+   `nonlimit_open_afternoon` *(Japanese term: **不成 — funari**)* for the same
+   quantity.
+4. Returns both order IDs and the profit-taking price.
 
 ## Request body
 
-| field  | type | required | description |
-|--------|------|----------|-------------|
-| symbol | string | Yes | **必ず "1459"** を指定してください。それ以外の値を送ると 500 になります（関数内でパターンマッチ）。 |
+| field  | type   | required | description                                                      |
+|--------|--------|----------|------------------------------------------------------------------|
+| symbol | string | Yes      | Must be exactly **"1459"**. Any other value triggers HTTP 500. |
 
 ```jsonc
 {
@@ -26,11 +32,11 @@ POST /kabue/rpc/quick_take
 
 ## Response body
 
-| field | type   | description |
-|-------|--------|-------------|
-| order_id | string | 買い注文の ID |
-| close_order_id | string | 売り（返済）注文の ID |
-| close_order_price | number | 指値価格（約定最⾼値 + 1 円） |
+| field            | type   | description                                   |
+|------------------|--------|-----------------------------------------------|
+| order_id         | string | The initial buy order ID                      |
+| close_order_id   | string | The profit-taking sell order ID               |
+| close_order_price| number | The limit price used for the sell order (JPY) |
 
 ```jsonc
 {
@@ -40,8 +46,10 @@ POST /kabue/rpc/quick_take
 }
 ```
 
-## 注意事項
+## Important considerations
 
-* 取引区分は **信用・一般デイトレ（制度／プレ空ではない）** 固定です。
-* 売り返済注文は `nonlimit_open_afternoon`（寄成 OPGO 相当？）がハードコードされています。市場状況により約定しない可能性があります。
-* 銘柄や数量・利幅はコードを改修しない限り変更できません。あくまで PoC（Proof-of-Concept）用です。
+* Trade type is fixed to **margin / general day-trade**.
+* The sell order uses `nonlimit_open_afternoon` (不成). Depending on market
+  conditions the order might not execute.
+* The implementation is meant as a **proof of concept**.  Modify the Erlang
+  code if you need different symbols, quantities, or exit strategy.

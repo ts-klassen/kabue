@@ -1,18 +1,21 @@
-# `order_list` – Show open / filled orders
+# `order_list` – Categorise current orders
 
 ```
 POST /kabue/rpc/order_list
 ```
 
-現在発注中の注文を一覧取得し、**注文数量と約定数量の差**に基づいて簡易的に 3 つのカテゴリにグループ化します。
+Returns the current order list together with three **ID buckets** that make it
+easy to display status in a UI.
 
-* `all` – 完全約定した注文（残数量 = 0）
-* `partial` – 一部約定（残数量 > 0 かつ 約定数量 > 0）
-* `none` – まったく約定していない注文（約定数量 = 0）
+| bucket   | criteria                                               |
+|----------|--------------------------------------------------------|
+| `all`    | Completely filled (`order_qty - cum_qty ≈ 0`)          |
+| `partial`| Partially filled (cum_qty > 0 but not full)            |
+| `none`   | No fill at all (cum_qty ≈ 0)                           |
 
 ## Request body
 
-空オブジェクトのみを受け付けます。
+Send an empty object – no parameters are required:
 
 ```json
 {}
@@ -22,7 +25,7 @@ POST /kabue/rpc/order_list
 
 ```jsonc
 {
-  "order_list": [ /* kabu REST /orders 互換配列 */ ],
+  "order_list": [ /* full REST /orders payload */ ],
   "id_buckets": {
     "all":     ["202504240001"],
     "partial": ["202504240002"],
@@ -31,5 +34,6 @@ POST /kabue/rpc/order_list
 }
 ```
 
-* `order_list` は kabu ステーション REST API `/orders` のレスポンス構造をそのまま返します。
-* `id_buckets` は追加で計算した **注文 ID のみ** の配列です。UI での色分けやフィルタリングに利用できます。
+* `order_list` is exactly what kabu Station REST API `/orders` returns.
+* `id_buckets` contains only the order IDs – handy for coloring rows or quick
+  filtering.
