@@ -22,7 +22,10 @@
         price_change_status/0,
         price_status/0,
         board_sign/0,
-        instrument_type/0
+        instrument_type/0,
+        ord_type/0,
+        order_rec_type/0,
+        detail_state/0
     ]).
 
 -export([
@@ -47,7 +50,10 @@
         price_change_status/0,
         price_status/0,
         board_sign/0,
-        instrument_type/0
+        instrument_type/0,
+        ord_type/0,
+        order_rec_type/0,
+        detail_state/0
     ]).
 
 %% Type Definitions
@@ -261,6 +267,33 @@
                          | topix_mini_future % TOPIXミニ先物
                          .
 
+%% ------------------------------------------------------------------
+%% New enumerations for order executions
+%% ------------------------------------------------------------------
+
+-type ord_type() :: continuous      % ザラバ
+                 | open            % 寄り
+                 | close           % 引け
+                 | nonlimit        % 不成
+                 | counter_limit   % 対当指値
+                 | ioc.            % IOC
+
+-type order_rec_type() :: accepted   % 受付
+                       | carryover   % 繰越
+                       | expired     % 期限切れ
+                       | sent        % 発注
+                       | modified    % 訂正
+                       | canceled    % 取消
+                       | lapsed      % 失効
+                       | executed.   % 約定
+
+-type detail_state() :: wait         % 待機（発注待機）
+                     | processing    % 処理中（発注送信中・訂正送信中・取消送信中）
+                     | processed     % 処理済（発注済・訂正済・取消済・全約定・期限切れ）
+                     | error         % エラー
+                     | deleted.      % 削除済み
+
+
 %% Function Definitions
 
 -spec exchange() -> maps:map(exchange(), integer()).
@@ -361,6 +394,46 @@ front_order_type() ->
         nonlimit_open_afternoon=> 26,
         ioc_limit              => 27,
         stop                   => 30
+    }.
+
+%% OrdType -----------------------------------------------------------
+
+-spec ord_type() -> maps:map(ord_type(), integer()).
+ord_type() ->
+    #{
+        continuous    => 1,
+        open          => 2,
+        close         => 3,
+        nonlimit      => 4,
+        counter_limit => 5,
+        ioc           => 6
+    }.
+
+%% Order execution RecType ------------------------------------------
+
+-spec order_rec_type() -> maps:map(order_rec_type(), integer()).
+order_rec_type() ->
+    #{
+        accepted   => 1,
+        carryover  => 2,
+        expired    => 3,
+        sent       => 4,
+        modified   => 5,
+        canceled   => 6,
+        lapsed     => 7,
+        executed   => 8
+    }.
+
+%% Detail State ------------------------------------------------------
+
+-spec detail_state() -> maps:map(detail_state(), integer()).
+detail_state() ->
+    #{
+        wait       => 1,
+        processing => 2,
+        processed  => 3,
+        error      => 4,
+        deleted    => 5
     }.
 
 -spec product() -> maps:map(product(), klsn:binstr()).

@@ -15,7 +15,7 @@
       , exchange_info/0
       , sendorder_future_result/0
       , sendorder_option_result/0
-      , cancelorder_result/0
+      , cancel_order_result/0
       , wallet_cash_result/0
       , wallet_future_result/0
       , wallet_margin_result/0
@@ -39,7 +39,7 @@
       , exchange/2
       , sendorder_future/2
       , sendorder_option/2
-      , cancelorder/2
+      , cancel_order/2
       , wallet_cash/1
       , wallet_cash/2
       , wallet_future/1
@@ -268,7 +268,7 @@
 
 -type sendorder_future_result()  :: order_ack().
 -type sendorder_option_result()  :: order_ack().
--type cancelorder_result()       :: order_ack().
+-type cancel_order_result()       :: order_ack().
 
 %% /wallet/cash – components/schemas/WalletCashSuccess
 -type wallet_cash_result() :: #{
@@ -303,16 +303,30 @@
 %% Orders and positions
 %%--------------------------------------------------------------------
 
-%% Detail element inside the "Details" array (execution lines).  Typed very
-%% loosely for now—users typically treat it as opaque.
--type order_execution_detail() :: map().
+%% Detail element inside the "Details" array (execution lines).
+-type order_execution_detail() :: #{
+        seq_num := integer()
+      , id := order_id()
+      , rec_type := kabue_mufje_enum:order_rec_type()
+      , exchange_id => klsn:maybe(klsn:binstr())
+      , state := kabue_mufje_enum:detail_state()
+      , transact_time => klsn:maybe(klsn:binstr())
+      , ord_type := klsn:maybe(kabue_mufje_enum:ord_type())
+      , price => float()
+      , qty => float()
+      , execution_id => klsn:maybe(klsn:binstr())
+      , execution_day => klsn:maybe(integer())
+      , deliv_day => klsn:maybe(integer())
+      , commission => klsn:maybe(float())
+      , commission_tax => klsn:maybe(float())
+    }.
 
 %% Single order entry (components/schemas/OrdersSuccess)
 -type order_entry() :: #{
         id := order_id()
       , state := kabue_mufje_enum:order_status()
       , order_state := kabue_mufje_enum:order_status()
-      , ord_type := term()
+      , ord_type := kabue_mufje_enum:ord_type()
       , recv_time := klsn:binstr()
       , symbol := symbol()
       , symbol_name := klsn:binstr()
@@ -333,7 +347,7 @@
     }.
 
 -type order_list_result()   :: [order_entry()].
--type order_detail_result() :: [order_entry()].
+-type order_detail_result() :: order_entry().
 
 %% Single position entry (components/schemas/PositionsSuccess)
 -type position_entry() :: #{
@@ -422,10 +436,11 @@ payload_to_order_entry(Doc) ->
     EnumDelivType       = klsn_map:invert(kabue_mufje_enum:deliv_type()),
     EnumMarginTradeType = klsn_map:invert(kabue_mufje_enum:margin_trade_type()),
     EnumOrderStatus     = klsn_map:invert(kabue_mufje_enum:order_status()),
+    EnumOrdType         = klsn_map:invert(kabue_mufje_enum:ord_type()),
 
     Map0 = #{
         id           => klsn_map:lookup([<<"ID">>], Doc)
-      , ord_type     => klsn_map:lookup([<<"OrdType">>], Doc)
+      , ord_type     => maybe_enum(<<"OrdType">>, Doc, EnumOrdType)
       , recv_time    => klsn_map:lookup([<<"RecvTime">>], Doc)
       , symbol       => klsn_map:lookup([<<"Symbol">>], Doc)
       , symbol_name  => klsn_map:lookup([<<"SymbolName">>], Doc)
@@ -439,7 +454,7 @@ payload_to_order_entry(Doc) ->
       , margin_premium => klsn_map:lookup([<<"MarginPremium">>], Doc)
       , details      => case klsn_map:lookup([<<"Details">>], Doc) of
                             {value, Arr} when is_list(Arr) ->
-                                {value, Arr};
+                                {value, lists:map(fun payload_to_order_execution_detail/1, Arr)};
                             _ ->
                                 {value, []}
                         end
@@ -454,11 +469,57 @@ payload_to_order_entry(Doc) ->
       , margin_trade_type => maybe_enum(<<"MarginTradeType">>, Doc, EnumMarginTradeType)
     }).
 
--spec maybe_enum(binary(), map(), map()) -> klsn:maybe(term()).
+
+%%--------------------------------------------------------------------
+%% Order execution detail helper
+%%--------------------------------------------------------------------
+
+-spec payload_to_order_execution_detail(map()) -> order_execution_detail().
+payload_to_order_execution_detail(Doc) ->
+    EnumOrdType   = klsn_map:invert(kabue_mufje_enum:ord_type()),
+    EnumRecType   = klsn_map:invert(kabue_mufje_enum:order_rec_type()),
+    EnumDetState  = klsn_map:invert(kabue_mufje_enum:detail_state()),
+
+    klsn_map:filter(#{
+        seq_num        => klsn_map:lookup([<<"SeqNum">>], Doc),
+        id             => klsn_map:lookup([<<"ID">>], Doc),
+        rec_type       => maybe_enum(<<"RecType">>, Doc, EnumRecType),
+        exchange_id    => klsn_map:lookup([<<"ExchangeID">>], Doc),
+        state          => maybe_enum(<<"State">>, Doc, EnumDetState),
+        transact_time  => klsn_map:lookup([<<"TransactTime">>], Doc),
+        ord_type       => maybe_enum(<<"OrdType">>, Doc, EnumOrdType),
+        price          => klsn_map:lookup([<<"Price">>], Doc),
+        qty            => klsn_map:lookup([<<"Qty">>], Doc),
+        execution_id   => klsn_map:lookup([<<"ExecutionID">>], Doc),
+        execution_day  => klsn_map:lookup([<<"ExecutionDay">>], Doc),
+        deliv_day      => klsn_map:lookup([<<"DelivDay">>], Doc),
+        commission     => klsn_map:lookup([<<"Commission">>], Doc),
+        commission_tax => klsn_map:lookup([<<"CommissionTax">>], Doc)
+    }).
+
+-spec maybe_enum(klsn:binstr() | integer() | null, map(), map()) -> klsn:maybe(term()).
 maybe_enum(Key, Doc, EnumInv) ->
     case klsn_map:lookup([Key], Doc) of
-        {value, Code} -> klsn_map:lookup([Code], EnumInv);
-        none -> none
+        {value, Code} ->
+            case klsn_map:lookup([Code], EnumInv) of
+                {value, Result} ->
+                    {value, Result};
+                none ->
+                    case Code of
+                        C when is_integer(C) ->
+                            klsn_map:lookup([integer_to_binary(C)], EnumInv);
+                        C when is_binary(C) ->
+                            try binary_to_integer(C) of N ->
+                                klsn_map:lookup([N], EnumInv)
+                            catch _:_ ->
+                                none
+                            end;
+                        _ ->
+                            none
+                    end
+            end;
+        none ->
+            none
     end.
 
 -spec payload_to_position_entry(map()) -> position_entry().
@@ -467,6 +528,7 @@ payload_to_position_entry(Doc) ->
     EnumSide        = klsn_map:invert(kabue_mufje_enum:side()),
     EnumAccountType = klsn_map:invert(kabue_mufje_enum:account_type()),
     EnumSecurity    = klsn_map:invert(kabue_mufje_enum:security_type()),
+    EnumMarginTradeType = klsn_map:invert(kabue_mufje_enum:margin_trade_type()),
 
     klsn_map:filter(#{
         execution_id   => klsn_map:lookup([<<"ExecutionID">>], Doc)
@@ -485,7 +547,7 @@ payload_to_position_entry(Doc) ->
       , commission     => klsn_map:lookup([<<"Commission">>], Doc)
       , commission_tax => klsn_map:lookup([<<"CommissionTax">>], Doc)
       , expire_day     => klsn_map:lookup([<<"ExpireDay">>], Doc)
-      , margin_trade_type => klsn_map:lookup([<<"MarginTradeType">>], Doc)
+      , margin_trade_type => maybe_enum(<<"MarginTradeType">>, Doc, EnumMarginTradeType)
       , current_price  => klsn_map:lookup([<<"CurrentPrice">>], Doc)
       , valuation      => klsn_map:lookup([<<"Valuation">>], Doc)
       , profit_loss    => klsn_map:lookup([<<"ProfitLoss">>], Doc)
@@ -978,12 +1040,12 @@ sendorder_option(ReqPayload0, Options) when is_map(ReqPayload0) ->
     end.
 
 
--spec cancelorder(
+-spec cancel_order(
         #{
             order_id := order_id()
         }
-      , options()) -> either(cancelorder_result()).
-cancelorder(#{order_id := OrderId}, Options) ->
+      , options()) -> either(cancel_order_result()).
+cancel_order(#{order_id := OrderId}, Options) ->
     Payload = #{ <<"OrderId">> => OrderId },
     case request(#{
             uri => <<"/kabusapi/cancelorder">>
@@ -1116,8 +1178,8 @@ order_list(Query0, Options) when is_map(Query0) ->
 order_detail(OrderIdBin, Options) ->
     Q = #{ <<"id">> => klsn_binstr:from_any(OrderIdBin) },
     case request(#{uri => <<"/kabusapi/orders">>, method => get, q => Q}, Options) of
-        {right, List} when is_list(List) ->
-            {right, lists:map(fun payload_to_order_entry/1, List)};
+        {right, [Detail]} ->
+            {right, payload_to_order_entry(Detail)};
         {left, Left} -> {left, Left}
     end.
 
