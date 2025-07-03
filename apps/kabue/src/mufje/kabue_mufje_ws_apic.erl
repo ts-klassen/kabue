@@ -192,7 +192,6 @@ handle_info({gun_ws, _Pid, Ref, {text, Text}}, State0) ->
             SignalPid ! {?MODULE, signal, {update, Mode, Ticker}}
         end, klsn_map:get([Mode, signal, Ticker], State60, []))
     end),
-    io:format("~p~n", [State60]),
     {noreply, State60};
 handle_info(Info, State) ->
     error_logger:info_msg("function=~p:~p/~p, line=~p~ninfo=~p~nstate=~p", [
