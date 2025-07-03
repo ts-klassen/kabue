@@ -235,7 +235,7 @@ panic_exit(#{}) ->
     end, ExitList),
     Either2Success = fun
         ({right, Payload}) ->
-            #{sucess => true, payload => Payload};
+            #{success => true, payload => Payload};
         ({left, Payload}) ->
             #{success => false, payload => Payload}
     end,
