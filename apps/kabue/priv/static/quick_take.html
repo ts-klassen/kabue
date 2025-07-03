@@ -3,6 +3,8 @@
   <head>
     <meta charset="utf-8">
     <title>quick_take</title>
+    <!-- Enable responsive behaviour on mobile devices -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <style>
       /* --- Layout --- */
       html, body {
@@ -238,6 +240,65 @@
 
       .highlight {
         background: #ffff66; /* pale yellow */
+      }
+
+      /* Allow horizontal scroll for board by default */
+      #board {
+        overflow-x: auto;
+      }
+
+      /* ---------- Responsive tweaks (mobile first) ---------- */
+      @media (max-width: 600px) {
+        html, body {
+          font-size: 14px;
+        }
+
+        header h1 {
+          font-size: 1.2rem;
+        }
+
+        /* Keep footer buttons on left and right */
+        footer {
+          flex-direction: row;
+          gap: 0.6rem;
+        }
+
+        /* Wallet section becomes horizontally scrollable; each inner
+           table keeps its natural width */
+        #walletSection {
+          max-width: 100%;
+          overflow-x: auto;
+        }
+
+        /* Stack wallet tables while allowing them to be as wide as needed */
+        table.wallet {
+          display: block;
+          margin-right: 0;
+          width: max-content;
+        }
+
+        footer button {
+          width: auto;
+        }
+
+        /* Ensure large tables can scroll horizontally */
+        #board,
+        #orderListInfo,
+        #positionListInfo {
+          overflow-x: auto;
+        }
+
+        table.orderlist,
+        table.board {
+          width: max-content; /* allow natural width so parent can scroll */
+          min-width: 100%;
+        }
+
+        /* Reduce message overlay width */
+        #messages {
+          width: 90%;
+          right: 5%;
+        }
       }
 
       /* separator between sell and buy */
