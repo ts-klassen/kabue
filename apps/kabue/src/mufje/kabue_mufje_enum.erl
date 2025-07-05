@@ -531,6 +531,7 @@ after_hit_order_type() ->
 -spec price_change_status() -> maps:map(price_change_status(), klsn:binstr()).
 price_change_status() ->
     #{
+        null => <<>>, % Not documented
         event_none => <<"0000">>,
         unchanged => <<"0056">>,
         up => <<"0057">>,
@@ -551,6 +552,7 @@ price_change_status() ->
 -spec price_status() -> maps:map(price_status(), integer()).
 price_status() ->
     #{
+        null => -1, % Not documented
         price => 1,
         discontinuous_walking => 2,
         order_matching => 3,
