@@ -241,6 +241,10 @@
       .highlight {
         background: #ffff66; /* pale yellow */
       }
+      /* ensure P/L text remains readable when flashing */
+      #profitLossSummary.highlight {
+        color: #000 !important;
+      }
 
       /* Allow horizontal scroll for board by default */
       #board {
@@ -309,7 +313,8 @@
   </head>
   <body>
     <header>
-      <h1 style="margin:0">quick_take</h1>
+      <h1 style="margin:0; display:inline-block">quick_take</h1>
+      <span id="profitLossSummary" style="margin-left:1rem; font-size:0.9rem; color:#fff;"></span>
     </header>
 
     <main>
@@ -360,8 +365,20 @@
     </footer>
 
     <script>
-      // Default symbol used for quick_take and board RPC calls.
-      const DEFAULT_SYMBOL = "1459";
+  // Default symbol used for quick_take and board RPC calls.
+  const DEFAULT_SYMBOL = "1459";
+
+  // update total P/L display in header
+  function updateProfitLoss(posList) {
+    const sum = (posList || []).reduce((acc, p) =>
+      acc + (typeof p.profit_loss === 'number' ? p.profit_loss : 0)
+    , 0);
+    const el = document.getElementById('profitLossSummary');
+    el.textContent = `P/L: ${sum.toLocaleString()}`;
+    // flash background on every update
+    el.classList.add('highlight');
+    setTimeout(() => el.classList.remove('highlight'), 1000);
+  }
 
       // ---------- RPC Helpers ----------
       function postRpc(path, payload) {
@@ -418,7 +435,7 @@
         table.className = "board";
 
         const thead = document.createElement("thead");
-        thead.innerHTML = `<tr><th>Price</th><th>Volume</th><th>Side</th><th>Level</th><th>Time</th></tr>`;
+        thead.innerHTML = `<tr><th>Price</th><th>Volume</th><th>LeavesQty</th><th>Time</th><th>Level</th><th>Side</th></tr>`;
         table.appendChild(thead);
 
         const tbody = document.createElement("tbody");
@@ -446,9 +463,16 @@
 
           tr.appendChild(cellHtml(r.price, priceKey));
           tr.appendChild(cellHtml(r.volume, volKey));
-          tr.appendChild(cellHtml(r.side, "")); // side changes not highlighted
-          tr.appendChild(cellHtml(r.level, ""));
+          // show LeavesQty from positions; leavesMap updated every 10s
+          {
+            const txt = leavesMap[r.price] != null
+              ? leavesMap[r.price].toLocaleString()
+              : "";
+            tr.appendChild(cellHtml(txt, ""));
+          }
           tr.appendChild(cellHtml(r.time, timeKey));
+          tr.appendChild(cellHtml(r.level, ""));
+          tr.appendChild(cellHtml(r.side, "")); // side changes not highlighted
 
           tbody.appendChild(tr);
         });
@@ -457,7 +481,9 @@
         return table;
       }
 
-      let prevBoard = {};
+let prevBoard = {};
+// map of price -> aggregated leaves_qty (populated by updateLeavesQty every 10s)
+let leavesMap = {};
       let refreshHandle;
 
       function scheduleNext(ms) {
@@ -494,6 +520,45 @@
 
       // initial fetch
       refreshBoard();
+
+      // periodically update LeavesQty column from positions every 10s
+      function updateLeavesQty() {
+        postRpc("position_list", {})
+          .then(data => {
+            const list = Array.isArray(data)
+              ? data
+              : (data.position_list || []);
+            // update P/L summary
+            updateProfitLoss(list);
+            // rebuild the global leavesMap
+            const newMap = {};
+            list.forEach(p => {
+              if (p.price != null && p.leaves_qty != null) {
+                newMap[p.price] = (newMap[p.price] || 0) + p.leaves_qty;
+              }
+            });
+            leavesMap = newMap;
+            // update existing board rows in-place
+            boardContainer.querySelectorAll("table.board tbody tr").forEach(row => {
+              const priceVal = parseFloat(
+                row.children[0].textContent.replace(/,/g, "")
+              );
+              const cell = row.children[2];
+              const nv = leavesMap[priceVal] || "";
+              const txt = nv === "" ? "" : nv.toLocaleString();
+              if (cell.textContent !== txt) {
+                cell.textContent = txt;
+                cell.classList.add("highlight");
+                setTimeout(() => cell.classList.remove("highlight"), 1000);
+              }
+            });
+          })
+          .catch(() => {});
+      }
+
+      // initial LeavesQty load + periodic refresh
+      updateLeavesQty();
+      setInterval(updateLeavesQty, 10000);
 
       // ---------- Wallet Info ----------
       function refreshWallet() {
@@ -688,6 +753,8 @@
         postRpc("position_list", {})
           .then(data => {
             const list = Array.isArray(data) ? data : (data?.position_list || data);
+            // update total profit/loss when positions arrive
+            updateProfitLoss(list);
             positionListInfoEl.innerHTML = "";
             positionListInfoEl.appendChild(buildPositionTable(list));
           })

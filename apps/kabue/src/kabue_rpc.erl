@@ -18,14 +18,15 @@ board(#{<<"symbol">>:=Symbol}) ->
         symbol => Symbol
       , exchange => tokyo
     },
+    TimeNow = klsn_flux:timestamp(),
     case kabue_mufje_ws_apic:lookup(real, Ticker) of
-        {value, Data} ->
+        {value, Data=#{current:=#{timestamp:=TimeStamp}}} when TimeNow - TimeStamp < 60_000_000_000 ->
             #{
                 is_ws_data => true
               , board => klsn_map:get([current, board], Data)
               , time => klsn_map:get([current, timestamp], Data)
             };
-        none ->
+        _ ->
             {right, Token} = kabue_mufje_rest_apic:token(#{ mode => real}),
             Options = #{ mode => real, print_left_info_msg => true, token => Token },
             kabue_mufje_rest_apic:register([Ticker], Options),
@@ -51,7 +52,9 @@ quick_take(#{<<"symbol">>:=Symbol}) ->
     {right, OrderId} = kabue_mufje_rest_apic:order(
         #{
             symbol => maps:get(symbol, Ticker)
-          , exchange => maps:get(exchange, Ticker)
+          % exchange => maps:get(exchange, Ticker)
+          % Only for buy, we use sor
+          , exchange => sor
           , security_type => stock
           , side => buy
           , cash_margin => margin_new
@@ -138,8 +141,14 @@ position_list(#{}) ->
     {right, Token} = kabue_mufje_rest_apic:token(#{ mode => real}),
     Options = #{ mode => real, print_left_info_msg => true, token => Token },
     {right, PositionList} = kabue_mufje_rest_apic:position_list(Options),
+    OpenPositionList = lists:filter(fun
+        (#{leaves_qty:=LQ}) when LQ < 0.001 ->
+            false;
+        (_) ->
+            true
+    end, PositionList),
     #{
-        position_list => PositionList
+        position_list => OpenPositionList
     }.
 
 
@@ -158,8 +167,21 @@ order_list(#{}) ->
         (#{id:=I}, #{partial:=L}=Acc) ->
             Acc#{partial := [I|L]}
     end, #{all => [], partial => [], none => []}, OrderList),
+    OpenOrderList = lists:filter(fun
+        (#{state:=finished}) ->
+            false;
+        (_) ->
+            true
+    end, OrderList),
+    FinishedOrderList = lists:filter(fun
+        (#{state:=finished}) ->
+            true;
+        (_) ->
+            false
+    end, OrderList),
     #{
-        order_list => OrderList
+        order_list => OpenOrderList
+      , finished_order_list => FinishedOrderList
       , id_buckets => Ids
     }.
 
@@ -192,7 +214,7 @@ panic_exit(#{}) ->
             end,
             {true, #{
                 symbol => maps:get(symbol, Pos)
-              , exchange => maps:get(exchange, Pos)
+              , exchange => maps:get(exchange, Pos, sor)
               , security_type => stock
               , side => Side
               , cash_margin => margin_repay
