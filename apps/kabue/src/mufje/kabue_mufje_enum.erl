@@ -211,6 +211,7 @@
                              | trading_stop_close % 売買停止引け
                              | circuit_breaker_close % サーキットブレーカ引け
                              | dynamic_circuit_breaker_close % ダイナミックサーキットブレーカ引け
+                             | null % 値なし
                              .
 
 -type price_status() :: price % 現値
@@ -236,6 +237,7 @@
                        | dynamic_circuit_breaker_trigger % ダイナミックサーキットブレイク発動
                        | dynamic_circuit_breaker_release % ダイナミックサーキットブレイク解除
                        | matched_order % 板寄せ約定
+                       | null % 値なし
                        .
 
 -type board_sign() :: event_none % 事象なし
@@ -531,6 +533,7 @@ after_hit_order_type() ->
 -spec price_change_status() -> maps:map(price_change_status(), klsn:binstr()).
 price_change_status() ->
     #{
+        null => <<>>, % Not documented
         event_none => <<"0000">>,
         unchanged => <<"0056">>,
         up => <<"0057">>,
@@ -551,6 +554,7 @@ price_change_status() ->
 -spec price_status() -> maps:map(price_status(), integer()).
 price_status() ->
     #{
+        null => -1, % Not documented
         price => 1,
         discontinuous_walking => 2,
         order_matching => 3,

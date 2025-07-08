@@ -245,6 +245,8 @@ board_types() ->
 convert(Type, Key, Value) ->
     try
         case {Type, Value} of
+            {_, null} ->
+                null;
             {string, String} when is_binary(String)->
                 String;
             {float, Float} when is_float(Float) ->
