@@ -211,6 +211,7 @@
                              | trading_stop_close % 売買停止引け
                              | circuit_breaker_close % サーキットブレーカ引け
                              | dynamic_circuit_breaker_close % ダイナミックサーキットブレーカ引け
+                             | null % 値なし
                              .
 
 -type price_status() :: price % 現値
@@ -236,6 +237,7 @@
                        | dynamic_circuit_breaker_trigger % ダイナミックサーキットブレイク発動
                        | dynamic_circuit_breaker_release % ダイナミックサーキットブレイク解除
                        | matched_order % 板寄せ約定
+                       | null % 値なし
                        .
 
 -type board_sign() :: event_none % 事象なし
