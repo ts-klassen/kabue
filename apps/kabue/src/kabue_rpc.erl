@@ -52,9 +52,7 @@ quick_take(#{<<"symbol">>:=Symbol}) ->
     {right, OrderId} = kabue_mufje_rest_apic:order(
         #{
             symbol => maps:get(symbol, Ticker)
-          % exchange => maps:get(exchange, Ticker)
-          % Only for buy, we use sor
-          , exchange => sor
+          , exchange => maps:get(exchange, Ticker)
           , security_type => stock
           , side => buy
           , cash_margin => margin_new
@@ -87,7 +85,7 @@ quick_take(#{<<"symbol">>:=Symbol}) ->
     BuyPriceMax = lists:max(lists:map(fun(#{price:=P}) ->
         P
     end, maps:get(details, OrderDetail))),
-    Price = BuyPriceMax + Profit,
+    Price = round(math:ceil(BuyPriceMax + Profit)),
     {right, CloseOrderId} = kabue_mufje_rest_apic:order(
         #{
             symbol => maps:get(symbol, Ticker)
@@ -214,6 +212,7 @@ panic_exit(#{}) ->
             end,
             {true, #{
                 symbol => maps:get(symbol, Pos)
+              % exchange becomes null on sor order
               , exchange => maps:get(exchange, Pos, sor)
               , security_type => stock
               , side => Side
@@ -223,7 +222,7 @@ panic_exit(#{}) ->
               , deliv_type => deposit
               , fund_type => credit_trading
               , account_type => specific
-              , qty => maps:get(leaves_qty, Pos)
+              , qty => round(maps:get(leaves_qty, Pos))
               , close_position_order => order_old_date_high_profit
               % close_positions => [#{
               %     hold_id => klsn:binstr()
